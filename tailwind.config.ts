@@ -10,13 +10,13 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: "var(--background)",
-        foreground: "var(--foreground)",
-        surface: "var(--surface)",
-        "surface-2": "var(--surface-2)",
-        border: "var(--border)",
-        muted: "var(--muted)",
-        accent: "var(--accent)",
+        background: "rgb(var(--background))",
+        foreground: "rgb(var(--foreground))",
+        surface: "rgb(var(--surface))",
+        "surface-2": "rgb(var(--surface-2))",
+        border: "rgb(var(--border))",
+        muted: "rgb(var(--muted))",
+        accent: "rgb(var(--accent))",
       },
     },
   },
