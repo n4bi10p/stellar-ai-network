@@ -272,7 +272,7 @@ The AI agent also understands natural language variations like _"transfer 50 lum
 
 ## License
 
-MIT
+[MIT](https://github.com/n4bi10p/stellar-ai-network/blob/main/LICENSE)
 
 ---
 
