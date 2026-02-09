@@ -89,22 +89,41 @@ export default function Home() {
     addMessage("user", trimmed);
     setInput("");
 
-    // Must be connected for most commands
-    if (!connected) {
-      // Allow help even without wallet
-      if (trimmed.toLowerCase() === "help" || trimmed.toLowerCase() === "?") {
-        addMessage("agent", HELP_MESSAGE);
-        return;
+    // Handle connect wallet command (works even when disconnected)
+    if (trimmed.toLowerCase().includes("connect wallet") || trimmed.toLowerCase() === "connect") {
+      if (connected) {
+        addMessage("system", `Wallet already connected: ${truncateAddress(address, 8)}`);
+      } else {
+        addMessage("agent", "> Initiating wallet connection...");
+        try {
+          await connect();
+          // Read fresh state from the store after connect
+          const state = useWallet.getState();
+          if (state.connected) {
+            addMessage("agent", `> [SUCCESS] Wallet connected!\n  ADDR: ${truncateAddress(state.address, 8)}\n  BALANCE: ${formatXLM(state.balance)} XLM\n  STATUS: SYNCED`);
+          } else if (state.error) {
+            addMessage("agent", `> [ERROR] ${state.error}`);
+          }
+        } catch {
+          addMessage("agent", "> [ERROR] Wallet connection failed. Is Freighter installed?");
+        }
       }
-      addMessage("system", "Wallet not connected. Click CONNECT_WALLET or type 'connect wallet'.");
       return;
     }
 
-    // Handle meta commands
+    // Allow help/clear even without wallet
     if (trimmed.toLowerCase() === "help" || trimmed.toLowerCase() === "?") {
       addMessage("agent", HELP_MESSAGE);
       return;
     }
+
+    // Must be connected for most commands
+    if (!connected) {
+      addMessage("system", "Wallet not connected. Type 'connect wallet' or click CONNECT_WALLET.");
+      return;
+    }
+
+    // Handle meta commands
 
     if (trimmed.toLowerCase() === "clear") {
       setMessages([]);
@@ -112,18 +131,11 @@ export default function Home() {
     }
 
     if (trimmed.toLowerCase() === "status") {
-      addMessage("agent", `> SYSTEM STATUS\n  WALLET: ${connected ? "CONNECTED" : "DISCONNECTED"}\n  ADDR: ${truncateAddress(address, 8)}\n  BALANCE: ${formatXLM(balance)} XLM\n  NETWORK: TESTNET\n  AI_ENGINE: Gemini 2.0 Flash Lite\n  MODE: INTERACTIVE`);
-      return;
-    }
-    if (trimmed.toLowerCase().includes("connect wallet")) {
-      await connect();
-      addMessage("system", connected ? "Wallet already connected." : "Attempting wallet connection...");
+      addMessage("agent", `> SYSTEM STATUS\n  WALLET: ${connected ? "CONNECTED" : "DISCONNECTED"}\n  ADDR: ${truncateAddress(address, 8)}\n  BALANCE: ${formatXLM(balance)} XLM\n  NETWORK: TESTNET\n  AI_ENGINE: Gemini 2.5 Flash\n  MODE: INTERACTIVE`);
       return;
     }
 
     // Parse with AI
-    addMessage("agent", "> Parsing command...");
-
     try {
       const parsed = await parseCommand(trimmed);
 
@@ -227,7 +239,7 @@ export default function Home() {
                 <br />
                 &nbsp;&nbsp;&bull; &quot;Send 10 XLM to GXXX...&quot;
                 <br />
-                &gt; Type below to begin.
+                &gt; Type <strong>help</strong> to see all available commands.
               </div>
             </div>
           )}
