@@ -36,24 +36,25 @@ Stellar AI Agent Network is a platform where users interact with the Stellar blo
 ### 1. Wallet Connected — Dashboard View
 > HUD terminal interface showing connected wallet, balance display, navigation sidebar, and system status panel.
 
-![Dashboard](https://github.com/user-attachments/assets/placeholder-dashboard.png)
+<img width="1920" height="963" alt="image" src="https://github.com/user-attachments/assets/591a7685-a31c-46ba-b293-521b41135a80" />
 
 ### 2. AI Command Parsing — Natural Language Input
 > User types "Send 10 XLM to GDAT..." and the AI agent parses the command, extracts destination and amount.
 
-![AI Command](https://github.com/user-attachments/assets/placeholder-ai-command.png)
+<img width="1920" height="963" alt="image" src="https://github.com/user-attachments/assets/5bef5a28-4a8e-4eba-a596-59dd5f1bd879" />
 
 ### 3. Transaction Execution — Success with Hash
 > Transaction signed via Freighter, submitted to Stellar Testnet, success message displayed with TX hash.
 
-![Transaction](https://github.com/user-attachments/assets/placeholder-transaction.png)
+<img width="1423" height="154" alt="image" src="https://github.com/user-attachments/assets/f9ddb63b-9a05-4ad6-8b6b-e655ff8a3440" />
+
 
 ### 4. Transaction on Stellar Explorer
 > Verified on stellar.expert showing the transaction details on testnet.
 
-![Explorer](https://github.com/user-attachments/assets/placeholder-explorer.png)
+<img width="1918" height="963" alt="image" src="https://github.com/user-attachments/assets/0f090df1-a403-4a39-93bc-07aad1172943" />
 
-> **Note:** Replace the placeholder image URLs above with actual screenshots before submission.
+[view](https://stellar.expert/explorer/testnet/tx/dc40915f1460db18cd7d70b0a8545af69f7fdaffc278d7b477b53cd44ea52371)
 
 ---
 
@@ -253,10 +254,6 @@ The AI agent also understands natural language variations like _"transfer 50 lum
 | Network Error | Horizon API down | "Failed to connect to Stellar network" |
 
 ---
-
-## Demo Video
-
-
 
 ---
 
