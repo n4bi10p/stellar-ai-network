@@ -15,7 +15,7 @@ export function ThemeToggle() {
       <button
         type="button"
         aria-label="Toggle theme"
-        className="h-9 w-20 rounded-full border border-border bg-surface"
+        className="h-7 w-16 rounded-full border border-border bg-surface"
       />
     );
   }
@@ -28,13 +28,9 @@ export function ThemeToggle() {
       type="button"
       aria-label="Toggle theme"
       onClick={() => setTheme(isDark ? "light" : "dark")}
-      className="inline-flex h-9 items-center gap-2 rounded-full border border-border bg-surface px-3 text-xs font-medium text-foreground transition hover:bg-surface-2"
+      className="inline-flex h-7 items-center gap-1.5 rounded-full border border-border bg-surface px-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-foreground transition hover:bg-surface-2"
     >
-      {isDark ? (
-        <Sun className="h-4 w-4" />
-      ) : (
-        <Moon className="h-4 w-4" />
-      )}
+      {isDark ? <Sun className="h-3 w-3" /> : <Moon className="h-3 w-3" />}
       {isDark ? "Light" : "Dark"}
     </button>
   );

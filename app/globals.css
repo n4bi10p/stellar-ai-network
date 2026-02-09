@@ -1,37 +1,80 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
+/* ── Class-based dark mode for next-themes ── */
+@variant dark (&:where(.dark, .dark *));
+
+/* ── Theme: register custom colors so Tailwind generates utilities ── */
+@theme inline {
+  --color-background: rgb(var(--bg));
+  --color-foreground: rgb(var(--fg));
+  --color-surface: rgb(var(--sf));
+  --color-surface-2: rgb(var(--sf2));
+  --color-border: rgb(var(--bd));
+  --color-muted: rgb(var(--mt));
+  --color-accent: rgb(var(--ac));
+}
+
+/* ── Runtime CSS variables (switch between light / dark) ── */
 :root {
   color-scheme: light;
-  --background: 250 249 246;
-  --foreground: 18 18 16;
-  --surface: 255 255 255;
-  --surface-2: 243 241 236;
-  --border: 220 217 209;
-  --muted: 106 103 97;
-  --accent: 34 44 62;
+  --bg: 245 245 243;
+  --fg: 28 30 30;
+  --sf: 255 255 255;
+  --sf2: 235 237 236;
+  --bd: 210 212 210;
+  --mt: 120 122 118;
+  --ac: 34 164 80;
+  --grid: 220 222 220;
+  --grid-strong: 200 202 200;
 }
 
 .dark {
   color-scheme: dark;
-  --background: 12 13 13;
-  --foreground: 231 227 221;
-  --surface: 18 20 19;
-  --surface-2: 26 29 27;
-  --border: 44 48 44;
-  --muted: 161 158 150;
-  --accent: 215 210 198;
+  --bg: 8 9 9;
+  --fg: 232 232 226;
+  --sf: 14 15 15;
+  --sf2: 22 24 24;
+  --bd: 48 52 50;
+  --mt: 140 142 134;
+  --ac: 86 214 132;
+  --grid: 26 28 28;
+  --grid-strong: 36 38 38;
 }
 
 body {
-  color: rgb(var(--foreground));
-  background: rgb(var(--background));
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  color: rgb(var(--fg));
+  background: rgb(var(--bg));
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
+/* ── Subtle grid overlay (only on main content area) ── */
+.hud-grid {
+  background-image:
+    linear-gradient(rgba(var(--grid), 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(var(--grid), 0.12) 1px, transparent 1px),
+    linear-gradient(rgba(var(--grid-strong), 0.18) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(var(--grid-strong), 0.18) 1px, transparent 1px);
+  background-size: 20px 20px, 20px 20px, 100px 100px, 100px 100px;
+  background-position: -1px -1px, -1px -1px, -1px -1px, -1px -1px;
+}
+
+/* ── Custom scrollbar ── */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(var(--bd), 0.4);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--bd), 0.6);
+}
+
+/* ── Selection ── */
+::selection {
+  background: rgba(var(--ac), 0.25);
+  color: rgb(var(--fg));
 }
