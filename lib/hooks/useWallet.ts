@@ -1,22 +1,26 @@
 "use client";
 
 import { create } from "zustand";
-import {
-  isConnected as freighterIsConnected,
-  getAddress,
-  requestAccess,
-  signTransaction,
-  getNetwork,
-} from "@stellar/freighter-api";
 import { fetchBalance as fetchXLMBalance } from "@/lib/stellar/client";
 import { NETWORK_PASSPHRASE } from "@/lib/utils/constants";
 import type { WalletState } from "@/lib/stellar/types";
+import type { WalletId, WalletProvider } from "@/lib/wallets/types";
+import { getProvider, WALLET_PROVIDERS } from "@/lib/wallets";
 
 interface WalletStore extends WalletState {
-  connect: () => Promise<void>;
+  /** Currently active wallet provider id */
+  activeWallet: WalletId | null;
+  /** The live provider instance (not serialisable, excluded from devtools) */
+  _provider: WalletProvider | null;
+
+  /** Connect using a specific wallet provider */
+  connect: (walletId?: WalletId) => Promise<void>;
   disconnect: () => void;
   refreshBalance: () => Promise<void>;
   signTx: (xdr: string) => Promise<string>;
+
+  /** Check which wallets are currently available in the browser */
+  detectWallets: () => Promise<WalletId[]>;
 }
 
 export const useWallet = create<WalletStore>((set, get) => ({
@@ -25,25 +29,41 @@ export const useWallet = create<WalletStore>((set, get) => ({
   balance: "0",
   loading: false,
   error: "",
+  activeWallet: null,
+  _provider: null,
 
-  connect: async () => {
+  detectWallets: async () => {
+    const available: WalletId[] = [];
+    for (const p of WALLET_PROVIDERS) {
+      try {
+        if (await p.isAvailable()) available.push(p.meta.id);
+      } catch {
+        // skip unavailable
+      }
+    }
+    return available;
+  },
+
+  connect: async (walletId?: WalletId) => {
     set({ loading: true, error: "" });
     try {
-      // Check if Freighter is installed
-      const { isConnected } = await freighterIsConnected();
-      if (!isConnected) {
-        throw new Error(
-          "Freighter wallet not found. Please install the Freighter browser extension."
-        );
+      // Default to freighter for backward compatibility
+      const id = walletId ?? "freighter";
+      const provider = getProvider(id);
+      if (!provider) throw new Error(`Unknown wallet: ${id}`);
+
+      // Check availability (skip for Albedo — always available)
+      if (id !== "albedo") {
+        const available = await provider.isAvailable();
+        if (!available) {
+          throw new Error(
+            `${provider.meta.name} wallet not found. Install it from ${provider.meta.installUrl}`
+          );
+        }
       }
 
-      // Request access (prompts user)
-      const { address, error: addrErr } = await requestAccess();
-      if (addrErr) throw new Error(addrErr.message);
-
-      // Verify network
-      const { network, error: netErr } = await getNetwork();
-      if (netErr) throw new Error(netErr.message);
+      // Connect and get public key
+      const address = await provider.connect();
 
       // Fetch balance
       let balance = "0";
@@ -60,10 +80,12 @@ export const useWallet = create<WalletStore>((set, get) => ({
         balance,
         loading: false,
         error: "",
+        activeWallet: id,
+        _provider: provider,
       });
 
       console.log(
-        `[WALLET] Connected: ${address.slice(0, 8)}... on ${network}`
+        `[WALLET] Connected via ${provider.meta.name}: ${address.slice(0, 8)}...`
       );
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Connection failed";
@@ -79,6 +101,8 @@ export const useWallet = create<WalletStore>((set, get) => ({
       balance: "0",
       loading: false,
       error: "",
+      activeWallet: null,
+      _provider: null,
     });
     console.log("[WALLET] Disconnected");
   },
@@ -96,12 +120,8 @@ export const useWallet = create<WalletStore>((set, get) => ({
   },
 
   signTx: async (xdr: string) => {
-    const { address } = get();
-    const { signedTxXdr, error } = await signTransaction(xdr, {
-      networkPassphrase: NETWORK_PASSPHRASE,
-      address,
-    });
-    if (error) throw new Error(error.message);
-    return signedTxXdr;
+    const { _provider } = get();
+    if (!_provider) throw new Error("No wallet connected");
+    return _provider.signTransaction(xdr, NETWORK_PASSPHRASE);
   },
 }));

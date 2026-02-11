@@ -4,12 +4,14 @@ import { useState, useRef, useEffect } from "react";
 import { Mic, ArrowUp, Wallet, LogOut, ExternalLink } from "lucide-react";
 import { HudShell } from "@/components/layout/HudShell";
 import { RightSidebar } from "@/components/layout/RightSidebar";
+import { WalletSelector } from "@/components/wallet/WalletSelector";
 import { useWallet } from "@/lib/hooks/useWallet";
 import { useAI } from "@/lib/hooks/useAI";
 import { useStellar } from "@/lib/hooks/useStellar";
 import { timestamp } from "@/lib/utils/formatting";
 import { truncateAddress, formatXLM } from "@/lib/utils/formatting";
 import { txExplorerUrl } from "@/lib/utils/constants";
+import { getErrorMessage } from "@/lib/utils/errors";
 import type { ChatMessage, TransactionResult } from "@/lib/stellar/types";
 
 /* ── Help text ── */
@@ -18,7 +20,7 @@ const HELP_MESSAGE = `> ══════════════════�
 > ═══════════════════════════════════════
 >
 > WALLET COMMANDS:
->   connect wallet    — Connect Freighter wallet
+>   connect wallet    — Open wallet selector (Freighter / Albedo / Rabet)
 >   check my balance  — Show current XLM balance
 >   status            — Show system & wallet status
 >
@@ -48,9 +50,10 @@ export default function Home() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [lastTx, setLastTx] = useState<TransactionResult | null>(null);
+  const [walletSelectorOpen, setWalletSelectorOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const { connected, address, balance, loading: walletLoading, error: walletError, connect, disconnect, refreshBalance } = useWallet();
+  const { connected, address, balance, loading: walletLoading, error: walletError, connect, disconnect, refreshBalance, activeWallet } = useWallet();
   const { parseCommand, loading: aiLoading } = useAI();
   const { sendXLM, loading: txLoading } = useStellar();
 
@@ -92,21 +95,11 @@ export default function Home() {
     // Handle connect wallet command (works even when disconnected)
     if (trimmed.toLowerCase().includes("connect wallet") || trimmed.toLowerCase() === "connect") {
       if (connected) {
-        addMessage("system", `Wallet already connected: ${truncateAddress(address, 8)}`);
+        addMessage("system", `Wallet already connected via ${activeWallet?.toUpperCase()}: ${truncateAddress(address, 8)}`);
       } else {
-        addMessage("agent", "> Initiating wallet connection...");
-        try {
-          await connect();
-          // Read fresh state from the store after connect
-          const state = useWallet.getState();
-          if (state.connected) {
-            addMessage("agent", `> [SUCCESS] Wallet connected!\n  ADDR: ${truncateAddress(state.address, 8)}\n  BALANCE: ${formatXLM(state.balance)} XLM\n  STATUS: SYNCED`);
-          } else if (state.error) {
-            addMessage("agent", `> [ERROR] ${state.error}`);
-          }
-        } catch {
-          addMessage("agent", "> [ERROR] Wallet connection failed. Is Freighter installed?");
-        }
+        // Open wallet selector modal
+        setWalletSelectorOpen(true);
+        addMessage("agent", "> Opening wallet selector... Choose Freighter, Albedo, or Rabet.");
       }
       return;
     }
@@ -131,7 +124,7 @@ export default function Home() {
     }
 
     if (trimmed.toLowerCase() === "status") {
-      addMessage("agent", `> SYSTEM STATUS\n  WALLET: ${connected ? "CONNECTED" : "DISCONNECTED"}\n  ADDR: ${truncateAddress(address, 8)}\n  BALANCE: ${formatXLM(balance)} XLM\n  NETWORK: TESTNET\n  AI_ENGINE: Gemini 2.5 Flash\n  MODE: INTERACTIVE`);
+      addMessage("agent", `> SYSTEM STATUS\n  WALLET: ${connected ? "CONNECTED" : "DISCONNECTED"}\n  PROVIDER: ${activeWallet?.toUpperCase() ?? "NONE"}\n  ADDR: ${truncateAddress(address, 8)}\n  BALANCE: ${formatXLM(balance)} XLM\n  NETWORK: TESTNET\n  AI_ENGINE: Gemini 2.5 Flash\n  MODE: INTERACTIVE`);
       return;
     }
 
@@ -175,7 +168,7 @@ export default function Home() {
 
       addMessage("agent", `> Command parsed: ${JSON.stringify(parsed)}\n> No handler for this action yet.`);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Unknown error";
+      const msg = getErrorMessage(err);
       addMessage("agent", `> [ERROR] ${msg}`);
     }
   }
@@ -192,16 +185,21 @@ export default function Home() {
           </span>
           <div className="flex items-center gap-2">
             {connected ? (
-              <button
-                onClick={disconnect}
-                className="flex items-center gap-1 rounded border border-border/60 px-2 py-0.5 text-[10px] text-accent transition-colors hover:bg-surface-2"
-              >
-                <LogOut className="h-3 w-3" />
-                DISCONNECT
-              </button>
+              <>
+                <span className="rounded border border-accent/40 bg-accent/10 px-2 py-0.5 text-[10px] text-accent">
+                  {activeWallet?.toUpperCase() ?? "WALLET"}
+                </span>
+                <button
+                  onClick={disconnect}
+                  className="flex items-center gap-1 rounded border border-border/60 px-2 py-0.5 text-[10px] text-accent transition-colors hover:bg-surface-2"
+                >
+                  <LogOut className="h-3 w-3" />
+                  DISCONNECT
+                </button>
+              </>
             ) : (
               <button
-                onClick={connect}
+                onClick={() => setWalletSelectorOpen(true)}
                 disabled={walletLoading}
                 className="flex items-center gap-1 rounded border border-accent/50 bg-accent/10 px-2 py-0.5 text-[10px] text-accent transition-colors hover:bg-accent/20 disabled:opacity-50"
               >
@@ -367,6 +365,19 @@ export default function Home() {
 
       {/* ─── Right Sidebar ─── */}
       <RightSidebar messages={messages} lastTx={lastTx} />
+
+      {/* ─── Wallet Selector Modal ─── */}
+      <WalletSelector
+        open={walletSelectorOpen}
+        onClose={() => {
+          setWalletSelectorOpen(false);
+          // Show feedback if wallet just connected
+          const state = useWallet.getState();
+          if (state.connected) {
+            addMessage("agent", `> [SUCCESS] Wallet connected via ${state.activeWallet?.toUpperCase()}!\n  ADDR: ${truncateAddress(state.address, 8)}\n  BALANCE: ${formatXLM(state.balance)} XLM\n  STATUS: SYNCED`);
+          }
+        }}
+      />
     </HudShell>
   );
 }

@@ -13,7 +13,7 @@ export function RightSidebar({
   messages: ChatMessage[];
   lastTx: TransactionResult | null;
 }) {
-  const { connected, address, balance } = useWallet();
+  const { connected, address, balance, activeWallet } = useWallet();
 
   return (
     <aside className="flex w-[280px] shrink-0 flex-col overflow-y-auto border-l border-border/60 bg-surface">
@@ -41,7 +41,11 @@ export function RightSidebar({
 
         {connected ? (
           <>
-            <div className="mt-2 text-[10px] tracking-wider text-muted">
+            <div className="mt-2 flex items-center justify-between text-[10px] tracking-wider text-muted">
+              <span>PROVIDER</span>
+              <span className="text-accent">{activeWallet?.toUpperCase()}</span>
+            </div>
+            <div className="mt-1 text-[10px] tracking-wider text-muted">
               ADDR: {truncateAddress(address, 6)}
             </div>
             <div className="mt-2 text-2xl font-bold tracking-tight">

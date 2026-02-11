@@ -3,7 +3,10 @@ import { z } from "zod";
 // Stellar address: starts with G, 56 chars
 export const stellarAddressSchema = z
   .string()
-  .regex(/^G[A-Z2-7]{55}$/, "Invalid Stellar address");
+  .regex(
+    /^G[A-Z2-7]{55}$/,
+    "Invalid Stellar address. Must start with G, be 56 characters, and contain only A-Z and 2-7."
+  );
 
 // XLM amount: positive number string
 export const xlmAmountSchema = z

@@ -36,3 +36,6 @@ yarn-error.log*
 next-env.d.ts
 plan.md
 screen.png
+
+# rust / soroban build artifacts
+contracts/agent/target/

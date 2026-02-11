@@ -22,8 +22,8 @@ export function useStellar() {
       });
 
       if (!buildRes.ok) {
-        const data = await buildRes.json();
-        throw new Error(data.error || "Failed to build transaction");
+        const data = await buildRes.json().catch(() => ({}));
+        throw new Error(data.error || `Build failed (${buildRes.status})`);
       }
 
       const { xdr } = await buildRes.json();
@@ -39,8 +39,8 @@ export function useStellar() {
       });
 
       if (!submitRes.ok) {
-        const data = await submitRes.json();
-        throw new Error(data.error || "Failed to submit transaction");
+        const data = await submitRes.json().catch(() => ({}));
+        throw new Error(data.error || `Submit failed (${submitRes.status})`);
       }
 
       const result = await submitRes.json();
