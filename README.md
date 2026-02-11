@@ -37,8 +37,8 @@ Stellar AI Agent Network is a platform where users interact with the Stellar blo
 ### 1. Wallet Selector — Multi-Wallet Options
 > HUD-styled modal showing all available wallets: Freighter, Albedo, and Rabet. Detected/Not Found badges, install links.
 
-<!-- TODO: Replace with actual wallet selector screenshot -->
-`📸 Screenshot: Wallet selector modal with Freighter, Albedo, Rabet options`
+<img width="1920" height="1001" alt="image" src="https://github.com/user-attachments/assets/85bed74c-bd9c-498a-ad84-eeee88e20386" />
+
 
 ### 2. Wallet Connected — Dashboard View
 > HUD terminal interface showing connected wallet, balance display, navigation sidebar, and system status panel.
