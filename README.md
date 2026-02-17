@@ -39,17 +39,19 @@
    Duration  643ms
 ```
 
-> 📸 **Screenshot:** [Test output showing 50 tests passing](https://github.com/n4bi10p/stellar-ai-network/blob/main/docs/test-output.png)
+> 📸 **Screenshot:** [Test output showing 50 tests passing]
 >
-> _(Replace with actual screenshot link after capturing `npx vitest run` output)_
+
+<img width="829" height="229" alt="image" src="https://github.com/user-attachments/assets/d844768d-0305-4e4a-bbc9-33b2f2e8d99c" />
+
 
 ---
 
 ## Demo Video
 
-> 🎬 **1-minute demo video:** [Watch on YouTube/Loom](https://your-demo-video-link-here)
->
-> _(Replace with actual recording link — show wallet connect, AI commands, agent deploy, toggle, execute)_
+> 🎬 **Demo video:** 
+
+[![Watch the demo](https://img.youtube.com/vi/tmxThIfT82U/maxresdefault.jpg)](https://www.youtube.com/watch?v=tmxThIfT82U)
 
 ---
 
