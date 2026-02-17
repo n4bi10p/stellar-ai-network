@@ -10,9 +10,46 @@
 [![Stellar](https://img.shields.io/badge/Stellar-Testnet-7C3AED?logo=stellar)](https://stellar.org)
 [![Gemini AI](https://img.shields.io/badge/Gemini_AI-2.5_Flash-4285F4?logo=google)](https://ai.google.dev)
 
-[Live Demo](#demo-video) · [Screenshots](#screenshots) · [Setup](#setup-instructions) · [Architecture](#architecture)
+[Live Demo](#live-demo) · [Test Results](#test-results) · [Demo Video](#demo-video) · [Screenshots](#screenshots) · [Setup](#setup-instructions) · [Architecture](#architecture)
 
 </div>
+
+---
+
+## Live Demo
+
+> **Deployed App:** [stellar-ai-network.vercel.app](https://stellar-ai-network.vercel.app)
+>
+> _Connect a Freighter/Albedo/Rabet wallet on Testnet to interact._
+
+---
+
+## Test Results
+
+**50 Vitest tests** + **5 Rust contract tests** = **55 total tests passing**
+
+```
+ ✓ tests/unit/ai.test.ts (13 tests) 10ms
+ ✓ tests/integration/agent-flow.test.ts (10 tests) 9ms
+ ✓ tests/unit/stellar.test.ts (27 tests) 23ms
+
+ Test Files  3 passed (3)
+      Tests  50 passed (50)
+   Start at  16:04:52
+   Duration  643ms
+```
+
+> 📸 **Screenshot:** [Test output showing 50 tests passing](https://github.com/n4bi10p/stellar-ai-network/blob/main/docs/test-output.png)
+>
+> _(Replace with actual screenshot link after capturing `npx vitest run` output)_
+
+---
+
+## Demo Video
+
+> 🎬 **1-minute demo video:** [Watch on YouTube/Loom](https://your-demo-video-link-here)
+>
+> _(Replace with actual recording link — show wallet connect, AI commands, agent deploy, toggle, execute)_
 
 ---
 
@@ -89,6 +126,17 @@ Stellar AI Agent Network is a platform where users interact with the Stellar blo
 | 5 | Contract Integration — Create/execute agents from UI | ✅ Done |
 | 6 | Error Handling — Contract-specific + improved validation | ✅ Done |
 
+### Level 3 — Orange Belt ✅
+
+| # | Requirement | Status |
+|---|------------|--------|
+| 1 | Agent Templates — 3 pre-built templates (Auto-Rebalancer, Bill Scheduler, Price Alert) | ✅ Done |
+| 2 | Agent Dashboard — Real on-chain data, analytics, template browser | ✅ Done |
+| 3 | Server-Side Persistence — JSON file-based agent store | ✅ Done |
+| 4 | Testing Suite — 50 Vitest + 5 Rust = 55 total tests | ✅ Done |
+| 5 | API Expansion — Agent CRUD routes (GET/POST + [id] GET/PATCH) | ✅ Done |
+| 6 | Template Pre-Fill — Create agents from templates via URL params | ✅ Done |
+
 ### Additional Features Built
 - AI-powered natural language command parsing (Gemini 2.5 Flash)
 - Terminal/HUD-style UI designed from Figma
@@ -114,6 +162,7 @@ Stellar AI Agent Network is a platform where users interact with the Stellar blo
 | Smart Contracts | Soroban (Rust) + soroban-sdk | 21.0.0 |
 | AI Engine | Google Gemini (generative-ai) | 0.24.1 |
 | State | React hooks + Zustand | 5.0.11 |
+| Testing | Vitest + Testing Library | 4.0.18 |
 | Validation | Zod | 4.3.6 |
 | Icons | Lucide React | 0.563.0 |
 | Theme | next-themes | 0.4.6 |
@@ -180,6 +229,25 @@ npm run build
 npm start
 ```
 
+### Run Tests
+
+```bash
+# Run all Vitest tests (50 tests — unit + integration)
+npm test
+
+# Watch mode
+npm run test:watch
+
+# Run Rust contract tests (5 tests)
+cd contracts && bash scripts/test.sh
+```
+
+**Test coverage:** 55 total tests
+- **27** — Stellar utilities (formatting, validation, error handling)
+- **13** — AI parsing logic (command validation, JSON extraction)
+- **10** — Agent integration flow (templates, create→deploy pipeline, dashboard)
+- **5** — Soroban contract (Rust: initialize, execute, toggle, edge cases)
+
 ### Smart Contract (Optional — already deployed)
 
 ```bash
@@ -203,15 +271,20 @@ stellar-ai-network/
 │   ├── page.tsx                      # Main HUD — wallet + chat + transactions
 │   ├── layout.tsx                    # Root layout with ThemeProvider
 │   ├── globals.css                   # Tailwind v4 theme tokens + HUD styles
-│   ├── dashboard/page.tsx            # Agent dashboard
+│   ├── dashboard/page.tsx            # Agent dashboard (real data + analytics)
 │   ├── agents/
-│   │   ├── create/page.tsx           # Create agent via Soroban deploy
+│   │   ├── page.tsx                  # Agent listing — filters, stats, on-chain data
+│   │   ├── create/page.tsx           # Create agent — template pre-fill + store
 │   │   └── [id]/page.tsx             # Agent detail — execute, toggle, config
+│   ├── marketplace/page.tsx          # Template marketplace — browse & deploy
+│   ├── analytics/page.tsx            # Agent analytics — KPIs, charts, rankings
 │   └── api/
 │       ├── ai/parse/route.ts         # Gemini AI command parsing
 │       ├── agents/
-│       │   ├── route.ts              # POST — initialize agent contract
-│       │   └── execute/route.ts      # POST — execute agent action
+│       │   ├── route.ts              # GET list + POST create agent
+│       │   ├── [id]/route.ts         # GET agent + PATCH update txHash
+│       │   ├── execute/route.ts      # POST — execute agent action
+│       │   └── toggle/route.ts       # POST — toggle agent active state
 │       └── stellar/
 │           ├── balance/route.ts      # Fetch XLM balance
 │           ├── send/route.ts         # Build unsigned TX XDR
@@ -229,6 +302,8 @@ stellar-ai-network/
 │       └── ThemeToggle.tsx           # Dark/Light toggle
 │
 ├── lib/
+│   ├── agents/
+│   │   └── templates.ts              # 3 pre-built agent templates
 │   ├── hooks/
 │   │   ├── useWallet.ts              # Multi-wallet store (Zustand)
 │   │   ├── useAI.ts                  # AI command parsing hook
@@ -237,6 +312,8 @@ stellar-ai-network/
 │   │   ├── client.ts                 # Horizon server, buildSendXLM, submitTx
 │   │   ├── contracts.ts              # Soroban RPC wrapper (build, submit, read)
 │   │   └── types.ts                  # ChatMessage, TransactionResult, ParsedCommand
+│   ├── store/
+│   │   └── agents.ts                 # Server-side JSON file-based persistence
 │   ├── wallets/
 │   │   ├── types.ts                  # WalletProvider interface
 │   │   ├── freighter.ts              # Freighter adapter
@@ -249,6 +326,9 @@ stellar-ai-network/
 │       ├── formatting.ts             # truncateAddress, formatXLM, timestamp
 │       └── validation.ts             # Zod schemas for API input
 │
+├── data/
+│   └── agents.json                   # Persistent agent metadata store
+│
 ├── contracts/
 │   ├── agent/
 │   │   ├── Cargo.toml                # Soroban contract dependencies
@@ -260,6 +340,15 @@ stellar-ai-network/
 │       ├── deploy.sh                 # Deploy to testnet
 │       └── test.sh                   # Run cargo test
 │
+├── tests/
+│   ├── setup.ts                      # Testing Library / Vitest setup
+│   ├── unit/
+│   │   ├── stellar.test.ts           # 27 tests — formatting, validation, errors
+│   │   └── ai.test.ts                # 13 tests — command parsing, JSON extraction
+│   └── integration/
+│       └── agent-flow.test.ts        # 10 tests — templates, deploy pipeline, dashboard
+│
+├── vitest.config.ts                  # Vitest test configuration
 ├── .env.example                      # Environment template
 ├── tailwind.config.ts                # Tailwind v4 content paths
 ├── postcss.config.mjs                # @tailwindcss/postcss plugin
@@ -299,9 +388,12 @@ User creates/executes agent
 
 | Command | Description |
 |---------|------------|
-| `connect wallet` | Connect Freighter wallet |
+| `connect wallet` | Open wallet selector (Freighter / Albedo / Rabet) |
 | `check my balance` | Show current XLM balance |
 | `Send 10 XLM to GXXX...` | AI-parsed transaction |
+| `create agent` | Navigate to agent creation page |
+| `list agents` | View your deployed agents |
+| `agent templates` | Browse available agent templates |
 | `help` or `?` | Show all available commands |
 | `status` | Show system & wallet status |
 | `clear` | Clear chat history |
@@ -366,14 +458,28 @@ The AI agent also understands natural language variations like _"transfer 50 lum
 
 ---
 
+## Agent Templates
+
+Three pre-built agent templates are available for one-click deployment:
+
+| Template | Strategy | Description | Defaults |
+|----------|----------|-------------|----------|
+| ⚖️ Auto-Rebalancer | `auto_rebalance` | Maintains target XLM allocations across accounts | 100 XLM |
+| 📅 Bill Scheduler | `recurring_payment` | Automates recurring XLM payments on schedule | 50 XLM |
+| 📈 Price Alert | `price_alert` | Monitors XLM price and executes trades at thresholds | 200 XLM |
+
+Templates can be selected from the dashboard template browser or the create page strategy selector.
+
+---
+
 ## Roadmap
 
 | Level | Status | Features |
 |-------|--------|----------|
 | **1 — White Belt** | ✅ Complete | Wallet, AI commands, transactions |
 | **2 — Yellow Belt** | ✅ Complete | Multi-wallet, Soroban contract, contract integration |
-| 3 — Orange Belt | 🔜 Next | Agent templates, dashboard, testing |
-| 4 — Green Belt | ⏳ Planned | Advanced agents, E2E tests |
+| **3 — Orange Belt** | ✅ Complete | Agent templates, dashboard, 55 tests |
+| 4 — Green Belt | 🔜 Next | Advanced agents, E2E tests |
 | 5 — Blue Belt | ⏳ Planned | Database, multi-agent management |
 | 6 — Black Belt | ⏳ Planned | Analytics, leaderboard, mainnet |
 

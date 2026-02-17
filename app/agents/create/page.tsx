@@ -1,31 +1,65 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, CheckCircle, XCircle, Loader2, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { HudShell } from "@/components/layout/HudShell";
 import { useWallet } from "@/lib/hooks/useWallet";
+import { AGENT_TEMPLATES, getTemplate } from "@/lib/agents/templates";
 import { txExplorerUrl } from "@/lib/utils/constants";
 import { getErrorMessage } from "@/lib/utils/errors";
 
 type TxStatus = "idle" | "building" | "signing" | "submitting" | "success" | "failed";
 
-const strategies = [
-  { id: "auto_rebalance", name: "Auto-Rebalancer", desc: "Maintains asset ratio automatically" },
-  { id: "recurring_payment", name: "Bill Scheduler", desc: "Recurring payments on schedule" },
-  { id: "price_alert", name: "Price Alert", desc: "Execute when price threshold met" },
-];
-
 export default function CreateAgentPage() {
+  return (
+    <Suspense fallback={
+      <HudShell>
+        <main className="hud-grid flex min-w-0 flex-1 items-center justify-center">
+          <Loader2 className="h-5 w-5 animate-spin text-muted" />
+        </main>
+      </HudShell>
+    }>
+      <CreateAgentInner />
+    </Suspense>
+  );
+}
+
+function CreateAgentInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { connected, address, signTx } = useWallet();
   const [name, setName] = useState("");
   const [strategy, setStrategy] = useState("");
+  const [templateId, setTemplateId] = useState<string | null>(null);
   const [txStatus, setTxStatus] = useState<TxStatus>("idle");
   const [txHash, setTxHash] = useState<string>("");
   const [contractId, setContractId] = useState<string>("");
+  const [agentStoreId, setAgentStoreId] = useState<string>("");
   const [errorMsg, setErrorMsg] = useState<string>("");
+
+  // Pre-fill from template query param
+  useEffect(() => {
+    const tplId = searchParams.get("template");
+    if (tplId) {
+      const tpl = getTemplate(tplId);
+      if (tpl) {
+        setTemplateId(tpl.id);
+        setStrategy(tpl.strategy);
+        if (!name) setName(tpl.name.toUpperCase().replace(/\s+/g, "_") + "_01");
+      }
+    }
+  }, [searchParams, name]);
+
+  // Build strategy options from templates
+  const strategies = AGENT_TEMPLATES.map((t) => ({
+    id: t.strategy,
+    templateId: t.id,
+    name: t.name,
+    desc: t.description.slice(0, 60) + "...",
+    icon: t.icon,
+  }));
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -35,12 +69,12 @@ export default function CreateAgentPage() {
     setTxHash("");
 
     try {
-      // Step 1 — Build unsigned XDR via API
+      // Step 1 — Build unsigned XDR via API (also stores agent)
       setTxStatus("building");
       const buildRes = await fetch("/api/agents", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ owner: address, name, strategy }),
+        body: JSON.stringify({ owner: address, name, strategy, templateId }),
       });
 
       if (!buildRes.ok) {
@@ -48,8 +82,9 @@ export default function CreateAgentPage() {
         throw new Error(data.error || "Failed to build transaction");
       }
 
-      const { xdr, contractId: cid } = await buildRes.json();
+      const { xdr, contractId: cid, agentId } = await buildRes.json();
       setContractId(cid);
+      setAgentStoreId(agentId);
 
       // Step 2 — Sign with wallet
       setTxStatus("signing");
@@ -73,6 +108,15 @@ export default function CreateAgentPage() {
       if (result.status === "SUCCESS" || result.status === "PENDING") {
         setTxHash(result.hash);
         setTxStatus("success");
+
+        // Update the stored agent with the TX hash
+        if (agentId) {
+          fetch(`/api/agents/${agentId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ txHash: result.hash }),
+          }).catch(() => {});
+        }
       } else {
         setTxHash(result.hash);
         throw new Error("Transaction failed on-chain");
@@ -134,7 +178,7 @@ export default function CreateAgentPage() {
                 />
               </div>
 
-              {/* Strategy Selection */}
+              {/* Strategy Selection (from templates) */}
               <div>
                 <label className="mb-2 block text-[10px] tracking-widest text-muted">STRATEGY_TYPE</label>
                 <div className="space-y-2">
@@ -142,16 +186,24 @@ export default function CreateAgentPage() {
                     <button
                       key={s.id}
                       type="button"
-                      onClick={() => !isWorking && txStatus !== "success" && setStrategy(s.id)}
+                      onClick={() => {
+                        if (!isWorking && txStatus !== "success") {
+                          setStrategy(s.id);
+                          setTemplateId(s.templateId);
+                        }
+                      }}
                       className={`flex w-full items-center justify-between border px-4 py-3 text-left transition-colors ${
                         strategy === s.id
                           ? "border-accent/50 bg-accent/10 text-accent"
                           : "border-border/40 bg-surface/80 text-muted hover:bg-surface-2/80"
                       } ${isWorking || txStatus === "success" ? "pointer-events-none opacity-60" : ""}`}
                     >
-                      <div>
-                        <div className="text-xs font-semibold tracking-wider">{s.name}</div>
-                        <div className="mt-0.5 text-[10px] tracking-wider opacity-70">{s.desc}</div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-lg">{s.icon}</span>
+                        <div>
+                          <div className="text-xs font-semibold tracking-wider">{s.name}</div>
+                          <div className="mt-0.5 text-[10px] tracking-wider opacity-70">{s.desc}</div>
+                        </div>
                       </div>
                       {strategy === s.id && (
                         <span className="text-[10px] font-bold tracking-widest">SELECTED</span>

@@ -1,0 +1,22 @@
+[
+  {
+    "contractId": "CAGIKMTM5ZGZZLYDHFI3EOI6GTJX7ODAJN2PW4JXNMNXKOFD5FBTQJKB",
+    "owner": "GCBWJPGRPE5DBX7L3UU5NJXR6I4SWXSXNAWBWWKXJLK33LGUM4S4H3OP",
+    "name": "Agent1",
+    "strategy": "auto_rebalance",
+    "templateId": "auto_rebalance",
+    "txHash": "438b99fcbe05d9e4be9722efae53b93f725b9d69d27554da33904e89895bd917",
+    "id": "49bba3b3-0dfa-4750-9e19-6054f5b14124",
+    "createdAt": "2026-02-17T10:03:53.497Z"
+  },
+  {
+    "contractId": "CAGIKMTM5ZGZZLYDHFI3EOI6GTJX7ODAJN2PW4JXNMNXKOFD5FBTQJKB",
+    "owner": "GCBWJPGRPE5DBX7L3UU5NJXR6I4SWXSXNAWBWWKXJLK33LGUM4S4H3OP",
+    "name": "Price alert1",
+    "strategy": "price_alert",
+    "templateId": "price_alert",
+    "txHash": "a452b521c4f74eedbdf7c57b2b229c37c93588173c25dcd02dc3e5fbe48267fc",
+    "id": "e199a1e0-b4f0-4984-812a-1e34ed564752",
+    "createdAt": "2026-02-17T10:21:48.892Z"
+  }
+]

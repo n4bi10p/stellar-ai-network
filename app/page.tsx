@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Mic, ArrowUp, Wallet, LogOut, ExternalLink } from "lucide-react";
 import { HudShell } from "@/components/layout/HudShell";
 import { RightSidebar } from "@/components/layout/RightSidebar";
@@ -13,6 +14,7 @@ import { truncateAddress, formatXLM } from "@/lib/utils/formatting";
 import { txExplorerUrl } from "@/lib/utils/constants";
 import { getErrorMessage } from "@/lib/utils/errors";
 import type { ChatMessage, TransactionResult } from "@/lib/stellar/types";
+import { AGENT_TEMPLATES } from "@/lib/agents/templates";
 
 /* ── Help text ── */
 const HELP_MESSAGE = `> ═══════════════════════════════════════
@@ -34,19 +36,20 @@ const HELP_MESSAGE = `> ══════════════════�
 >   "Send fifty lumens to GXXX..."
 >   "Transfer all to GABC..."
 >
+> AGENT COMMANDS:
+>   create agent      — Deploy a new AI agent contract
+>   list agents       — View your deployed agents
+>   agent templates   — Browse preset strategies
+>
 > UTILITY COMMANDS:
 >   help / ?   — Show this help message
 >   clear      — Clear chat history
 >   status     — Show system status
 >
-> COMING SOON (Level 2+):
->   create agent      — Deploy AI agent contract
->   list agents       — View deployed agents
->   agent templates   — Browse preset strategies
->
 > ═══════════════════════════════════════`;
 
 export default function Home() {
+  const router = useRouter();
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [lastTx, setLastTx] = useState<TransactionResult | null>(null);
@@ -101,6 +104,32 @@ export default function Home() {
         setWalletSelectorOpen(true);
         addMessage("agent", "> Opening wallet selector... Choose Freighter, Albedo, or Rabet.");
       }
+      return;
+    }
+
+    // Agent commands (work without wallet)
+    const lower = trimmed.toLowerCase();
+
+    if (lower === "create agent" || lower === "create_agent" || lower === "deploy agent") {
+      addMessage("agent", "> Navigating to agent deployment...\n  Opening CREATE_AGENT form.");
+      setTimeout(() => router.push("/agents/create"), 500);
+      return;
+    }
+
+    if (lower === "list agents" || lower === "my agents" || lower === "show agents") {
+      addMessage("agent", "> Loading your deployed agents...\n  Navigating to AGENTS dashboard.");
+      setTimeout(() => router.push("/agents"), 500);
+      return;
+    }
+
+    if (lower === "agent templates" || lower === "templates" || lower === "browse templates") {
+      const templateList = AGENT_TEMPLATES.map(
+        (t) => `  ${t.icon} ${t.name.padEnd(18)} — ${t.description.slice(0, 60)}...`
+      ).join("\n");
+      addMessage(
+        "agent",
+        `> ═══════════════════════════════════════\n> AVAILABLE AGENT TEMPLATES\n> ═══════════════════════════════════════\n${templateList}\n>\n> Use 'create agent' to deploy one, or visit /marketplace for details.`
+      );
       return;
     }
 
@@ -162,7 +191,8 @@ export default function Home() {
       }
 
       if (parsed.action === "create_agent") {
-        addMessage("agent", "> Agent creation will be available in Level 2. Stay tuned!");
+        addMessage("agent", "> Navigating to agent deployment...\n  Opening CREATE_AGENT form.");
+        setTimeout(() => router.push("/agents/create"), 500);
         return;
       }
 

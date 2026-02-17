@@ -134,31 +134,53 @@ export default function AgentDetailPage() {
     }
   }
 
-  // Toggle active
+  // Toggle active state
+  const [toggleError, setToggleError] = useState("");
+
   async function handleToggle() {
     if (!address) return;
     setToggling(true);
+    setToggleError("");
     try {
-      // Build toggle_active tx
-      const buildRes = await fetch("/api/agents/execute", {
+      // Step 1 — Build toggle_active XDR
+      const buildRes = await fetch("/api/agents/toggle", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contractId,
-          recipient: address, // not used by toggle but needed for API shape
-          amount: "0",
-          sourceAddress: address,
-        }),
+        body: JSON.stringify({ contractId, sourceAddress: address }),
       });
 
-      // For toggle we actually need a dedicated endpoint, but we can build it
-      // client-side using the contracts lib. For now we use a simpler approach:
-      // call the toggle API directly.
-      // In a real implementation, we'd build toggle_active XDR here.
-      // For demo purposes, just refresh the config.
-      await fetchConfig();
-    } catch {
-      // silent
+      if (!buildRes.ok) {
+        const data = await buildRes.json();
+        throw new Error(data.error || "Failed to build toggle transaction");
+      }
+
+      const { xdr } = await buildRes.json();
+
+      // Step 2 — Sign with wallet
+      const signedXdr = await signTx(xdr);
+
+      // Step 3 — Submit to Soroban RPC
+      const submitRes = await fetch("/api/stellar/submit-soroban", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ signedXDR: signedXdr }),
+      });
+
+      if (!submitRes.ok) {
+        const data = await submitRes.json();
+        throw new Error(data.error || "Submission failed");
+      }
+
+      const result = await submitRes.json();
+
+      if (result.status === "SUCCESS" || result.status === "PENDING") {
+        // Refresh config to reflect new active state
+        await fetchConfig();
+      } else {
+        throw new Error("Toggle transaction failed on-chain");
+      }
+    } catch (err) {
+      setToggleError(getErrorMessage(err));
     } finally {
       setToggling(false);
     }
@@ -215,6 +237,9 @@ export default function AgentDetailPage() {
                     {toggling ? <Loader2 className="h-3 w-3 animate-spin" /> : <Power className="h-3 w-3" />}
                     TOGGLE
                   </button>
+                  {toggleError && (
+                    <span className="text-[9px] text-red-400">{toggleError}</span>
+                  )}
                 </>
               )}
               <button

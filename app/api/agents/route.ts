@@ -1,12 +1,25 @@
-// POST /api/agents — Build an initialize-agent transaction
-// The frontend signs it via wallet and submits via /api/stellar/submit-soroban
+// GET  /api/agents — List agents (optionally filtered by owner)
+// POST /api/agents — Build an initialize-agent transaction + store in JSON
 
 import { NextRequest, NextResponse } from "next/server";
 import { buildInitialize } from "@/lib/stellar/contracts";
+import { readAgents, addAgent, getAgentsByOwner } from "@/lib/store/agents";
+
+export async function GET(request: NextRequest) {
+  try {
+    const owner = request.nextUrl.searchParams.get("owner");
+    const agents = owner ? getAgentsByOwner(owner) : readAgents();
+    return NextResponse.json({ agents });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to list agents";
+    console.error("[API GET /agents] Error:", msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
-    const { owner, name, strategy } = await request.json();
+    const { owner, name, strategy, templateId } = await request.json();
 
     if (!owner || !name || !strategy) {
       return NextResponse.json(
@@ -26,9 +39,20 @@ export async function POST(request: NextRequest) {
     // Build the unsigned transaction XDR for initialize()
     const xdr = await buildInitialize(contractId, owner, name, strategy, owner);
 
+    // Persist agent metadata in server-side store
+    const stored = addAgent({
+      contractId,
+      owner,
+      name,
+      strategy,
+      templateId: templateId ?? null,
+      txHash: null,
+    });
+
     return NextResponse.json({
       success: true,
       contractId,
+      agentId: stored.id,
       xdr,
       message: "Sign and submit this transaction to initialize your agent.",
     });
