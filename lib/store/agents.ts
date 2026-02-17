@@ -17,6 +17,25 @@ export interface StoredAgent {
   templateId: string | null;
   createdAt: string; // ISO 8601
   txHash: string | null;
+
+  /**
+   * Strategy-specific config. Stored as plain JSON so it can be migrated to DB later (Level 5).
+   * Examples:
+   * - recurring_payment: { recipient, amount, intervalSeconds, maxExecutions }
+   * - price_alert: { recipient, upperBound, lowerBound, alertAmount, checkIntervalSeconds }
+   */
+  strategyConfig?: Record<string, unknown>;
+
+  /** Strategy runtime state (timestamps, last price, counters, etc.) */
+  strategyState?: Record<string, unknown>;
+
+  /** Auto-execution control (used later by cron in Phase 2) */
+  autoExecuteEnabled?: boolean;
+
+  /** Scheduling + telemetry */
+  lastExecutionAt?: string | null; // ISO 8601
+  nextExecutionAt?: string | null; // ISO 8601
+  executionCount?: number; // auto executions performed
 }
 
 // Ensure the data directory and file exist
@@ -77,6 +96,68 @@ export function updateAgentTxHash(id: string, txHash: string): void {
     agents[idx].txHash = txHash;
     writeAgents(agents);
   }
+}
+
+/** Update any stored agent fields (shallow merge). */
+export function updateAgent(id: string, patch: Partial<StoredAgent>): StoredAgent | null {
+  const agents = readAgents();
+  const idx = agents.findIndex((a) => a.id === id);
+  if (idx < 0) return null;
+  const updated: StoredAgent = { ...agents[idx], ...patch };
+  agents[idx] = updated;
+  writeAgents(agents);
+  return updated;
+}
+
+/** Merge strategy config + state updates. */
+export function updateAgentStrategy(
+  id: string,
+  update: {
+    strategyConfig?: Record<string, unknown>;
+    strategyState?: Record<string, unknown>;
+    autoExecuteEnabled?: boolean;
+    nextExecutionAt?: string | null;
+  }
+): StoredAgent | null {
+  const agent = getAgentById(id);
+  if (!agent) return null;
+
+  const mergedConfig =
+    update.strategyConfig === undefined
+      ? agent.strategyConfig
+      : { ...(agent.strategyConfig ?? {}), ...update.strategyConfig };
+
+  const mergedState =
+    update.strategyState === undefined
+      ? agent.strategyState
+      : { ...(agent.strategyState ?? {}), ...update.strategyState };
+
+  return updateAgent(id, {
+    strategyConfig: mergedConfig,
+    strategyState: mergedState,
+    autoExecuteEnabled:
+      update.autoExecuteEnabled === undefined
+        ? agent.autoExecuteEnabled
+        : update.autoExecuteEnabled,
+    nextExecutionAt:
+      update.nextExecutionAt === undefined ? agent.nextExecutionAt ?? null : update.nextExecutionAt,
+  });
+}
+
+/** Record an execution attempt (success/failure recorded elsewhere). */
+export function recordAgentExecution(
+  id: string,
+  update: { lastExecutionAt: string; nextExecutionAt?: string | null }
+): StoredAgent | null {
+  const agent = getAgentById(id);
+  if (!agent) return null;
+  const prev = agent.executionCount ?? 0;
+  return updateAgent(id, {
+    lastExecutionAt: update.lastExecutionAt,
+    nextExecutionAt:
+      update.nextExecutionAt === undefined ? agent.nextExecutionAt ?? null : update.nextExecutionAt,
+    executionCount: prev + 1,
+  });
 }
 
 /** Delete an agent by ID */

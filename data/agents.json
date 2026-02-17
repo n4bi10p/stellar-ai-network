@@ -7,7 +7,8 @@
     "templateId": "auto_rebalance",
     "txHash": "438b99fcbe05d9e4be9722efae53b93f725b9d69d27554da33904e89895bd917",
     "id": "49bba3b3-0dfa-4750-9e19-6054f5b14124",
-    "createdAt": "2026-02-17T10:03:53.497Z"
+    "createdAt": "2026-02-17T10:03:53.497Z",
+    "nextExecutionAt": null
   },
   {
     "contractId": "CAGIKMTM5ZGZZLYDHFI3EOI6GTJX7ODAJN2PW4JXNMNXKOFD5FBTQJKB",
@@ -28,5 +29,22 @@
     "txHash": "a2a72cf81e6ab4183a9d469709332472a98ecb0280445b56aced12a937f47e4f",
     "id": "5376e3ec-bdad-4bb3-9f3f-69ea28158f42",
     "createdAt": "2026-02-17T12:27:08.210Z"
+  },
+  {
+    "contractId": "CAGIKMTM5ZGZZLYDHFI3EOI6GTJX7ODAJN2PW4JXNMNXKOFD5FBTQJKB",
+    "owner": "GCBWJPGRPE5DBX7L3UU5NJXR6I4SWXSXNAWBWWKXJLK33LGUM4S4H3OP",
+    "name": "test1",
+    "strategy": "auto_rebalance",
+    "templateId": "auto_rebalance",
+    "txHash": "3dca9206ce046a53065fe3057830e7681bf23784d245708a1af51298590c430d",
+    "strategyConfig": {
+      "targetRatio": 50,
+      "checkInterval": 3600,
+      "slippage": 1,
+      "recipient": "GAAB35I465TZAUN7KMTJXJXXM2SWD6AVB72ZUPLVYGYSZYUJCUV2JO3R"
+    },
+    "id": "567df069-4506-42b6-a916-eff20e80dac7",
+    "createdAt": "2026-02-17T18:32:06.335Z",
+    "nextExecutionAt": "2026-02-17T19:37:59.403Z"
   }
 ]

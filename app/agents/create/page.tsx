@@ -33,6 +33,7 @@ function CreateAgentInner() {
   const [name, setName] = useState("");
   const [strategy, setStrategy] = useState("");
   const [templateId, setTemplateId] = useState<string | null>(null);
+  const [strategyConfig, setStrategyConfig] = useState<Record<string, unknown>>({});
   const [txStatus, setTxStatus] = useState<TxStatus>("idle");
   const [txHash, setTxHash] = useState<string>("");
   const [contractId, setContractId] = useState<string>("");
@@ -47,6 +48,7 @@ function CreateAgentInner() {
       if (tpl) {
         setTemplateId(tpl.id);
         setStrategy(tpl.strategy);
+        setStrategyConfig(tpl.defaults ?? {});
         if (!name) setName(tpl.name.toUpperCase().replace(/\s+/g, "_") + "_01");
       }
     }
@@ -74,7 +76,13 @@ function CreateAgentInner() {
       const buildRes = await fetch("/api/agents", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ owner: address, name, strategy, templateId }),
+        body: JSON.stringify({
+          owner: address,
+          name,
+          strategy,
+          templateId,
+          strategyConfig,
+        }),
       });
 
       if (!buildRes.ok) {
@@ -190,6 +198,8 @@ function CreateAgentInner() {
                         if (!isWorking && txStatus !== "success") {
                           setStrategy(s.id);
                           setTemplateId(s.templateId);
+                          const tpl = getTemplate(s.templateId);
+                          setStrategyConfig(tpl?.defaults ?? {});
                         }
                       }}
                       className={`flex w-full items-center justify-between border px-4 py-3 text-left transition-colors ${
@@ -212,6 +222,95 @@ function CreateAgentInner() {
                   ))}
                 </div>
               </div>
+
+              {/* Strategy-specific configuration */}
+              {strategy === "auto_rebalance" && (
+                <div>
+                  <label className="mb-2 block text-[10px] tracking-widest text-muted">
+                    AUTO_REBALANCE_CONFIG
+                  </label>
+                  <div className="space-y-3 border border-border/40 bg-surface/80 px-4 py-3">
+                    <div>
+                      <span className="mb-1 block text-[9px] tracking-widest text-muted">
+                        RECIPIENT (REBALANCE TARGET)
+                      </span>
+                      <input
+                        type="text"
+                        value={(strategyConfig.recipient as string) ?? ""}
+                        onChange={(e) =>
+                          setStrategyConfig((prev) => ({
+                            ...prev,
+                            recipient: e.target.value,
+                          }))
+                        }
+                        placeholder="GDESTINATION..."
+                        disabled={isWorking || txStatus === "success"}
+                        className="w-full border border-border/40 bg-surface/90 px-3 py-2 text-sm outline-none placeholder:text-muted/40 focus:border-accent/50 disabled:opacity-50"
+                      />
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <span className="mb-1 block text-[9px] tracking-widest text-muted">
+                          TARGET_RATIO (%)
+                        </span>
+                        <input
+                          type="number"
+                          value={
+                            (strategyConfig.targetRatio as number | undefined) ?? 50
+                          }
+                          onChange={(e) =>
+                            setStrategyConfig((prev) => ({
+                              ...prev,
+                              targetRatio: Number(e.target.value || 0),
+                            }))
+                          }
+                          disabled={isWorking || txStatus === "success"}
+                          className="w-full border border-border/40 bg-surface/90 px-3 py-2 text-sm outline-none placeholder:text-muted/40 focus:border-accent/50 disabled:opacity-50"
+                        />
+                      </div>
+                      <div>
+                        <span className="mb-1 block text-[9px] tracking-widest text-muted">
+                          CHECK_INTERVAL (s)
+                        </span>
+                        <input
+                          type="number"
+                          value={
+                            (strategyConfig.checkInterval as number | undefined) ??
+                            3600
+                          }
+                          onChange={(e) =>
+                            setStrategyConfig((prev) => ({
+                              ...prev,
+                              checkInterval: Number(e.target.value || 0),
+                            }))
+                          }
+                          disabled={isWorking || txStatus === "success"}
+                          className="w-full border border-border/40 bg-surface/90 px-3 py-2 text-sm outline-none placeholder:text-muted/40 focus:border-accent/50 disabled:opacity-50"
+                        />
+                      </div>
+                      <div>
+                        <span className="mb-1 block text-[9px] tracking-widest text-muted">
+                          THRESHOLD_XLM
+                        </span>
+                        <input
+                          type="number"
+                          value={
+                            (strategyConfig.thresholdXlm as number | undefined) ?? 1
+                          }
+                          onChange={(e) =>
+                            setStrategyConfig((prev) => ({
+                              ...prev,
+                              thresholdXlm: Number(e.target.value || 0),
+                            }))
+                          }
+                          disabled={isWorking || txStatus === "success"}
+                          className="w-full border border-border/40 bg-surface/90 px-3 py-2 text-sm outline-none placeholder:text-muted/40 focus:border-accent/50 disabled:opacity-50"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Deploy Button */}
               {txStatus !== "success" && (

@@ -19,7 +19,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { owner, name, strategy, templateId } = await request.json();
+    const { owner, name, strategy, templateId, strategyConfig } =
+      await request.json();
 
     if (!owner || !name || !strategy) {
       return NextResponse.json(
@@ -39,7 +40,7 @@ export async function POST(request: NextRequest) {
     // Build the unsigned transaction XDR for initialize()
     const xdr = await buildInitialize(contractId, owner, name, strategy, owner);
 
-    // Persist agent metadata in server-side store
+    // Persist agent metadata in server-side store (include optional strategyConfig)
     const stored = addAgent({
       contractId,
       owner,
@@ -47,6 +48,7 @@ export async function POST(request: NextRequest) {
       strategy,
       templateId: templateId ?? null,
       txHash: null,
+      strategyConfig: (strategyConfig as Record<string, unknown> | undefined) ?? undefined,
     });
 
     return NextResponse.json({

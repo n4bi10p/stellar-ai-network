@@ -39,12 +39,18 @@ export default function AgentDetailPage() {
   const [agent, setAgent] = useState<AgentData | null>(null);
   const [loadingConfig, setLoadingConfig] = useState(true);
 
-  // Execute state
+  // Execute state (manual)
   const [execRecipient, setExecRecipient] = useState("");
   const [execAmount, setExecAmount] = useState("");
   const [execStatus, setExecStatus] = useState<TxStatus>("idle");
   const [execHash, setExecHash] = useState("");
   const [execError, setExecError] = useState("");
+
+  // Auto-execute state (strategy-driven)
+  const [autoExecLoading, setAutoExecLoading] = useState(false);
+  const [autoExecError, setAutoExecError] = useState("");
+  const [autoExecReason, setAutoExecReason] = useState("");
+  const [autoExecHash, setAutoExecHash] = useState("");
 
   // Toggle state
   const [toggling, setToggling] = useState(false);
@@ -131,6 +137,43 @@ export default function AgentDetailPage() {
     } catch (err) {
       setExecStatus("failed");
       setExecError(getErrorMessage(err));
+    }
+  }
+
+  // AUTO_EXECUTE_NOW — invoke strategy engine on server
+  async function handleAutoExecuteNow() {
+    if (!address || !agent) return;
+
+    setAutoExecError("");
+    setAutoExecReason("");
+    setAutoExecHash("");
+    setAutoExecLoading(true);
+
+    try {
+      const res = await fetch(`/api/agents/${contractId}/auto-execute`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sourceAddress: address }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        const msg = data?.error || data?.message || "Auto execution failed";
+        throw new Error(msg);
+      }
+
+      setAutoExecReason(data.reason || "");
+
+      if (data.executed && data.txHash) {
+        setAutoExecHash(data.txHash as string);
+        // Refresh on-chain executions count
+        await fetchConfig();
+      }
+    } catch (err) {
+      setAutoExecError(getErrorMessage(err));
+    } finally {
+      setAutoExecLoading(false);
     }
   }
 
@@ -363,6 +406,83 @@ export default function AgentDetailPage() {
                       </div>
                     )}
                   </form>
+                )}
+              </div>
+
+              {/* AUTO EXECUTION */}
+              <div className="mt-6">
+                <div className="mb-3 text-[10px] tracking-widest text-muted">
+                  // AUTO_EXECUTION
+                </div>
+                {!connected ? (
+                  <div className="border border-border/40 bg-surface/80 px-4 py-4 text-center text-[10px] text-muted">
+                    &gt; Connect wallet (owner account) to run AUTO_EXECUTE_NOW
+                  </div>
+                ) : (
+                  <div className="space-y-3 border border-border/40 bg-surface/80 px-4 py-4 text-[10px] tracking-wider">
+                    <button
+                      type="button"
+                      onClick={handleAutoExecuteNow}
+                      disabled={autoExecLoading || !agent.active}
+                      className="flex w-full items-center justify-center gap-2 border border-accent/50 bg-accent/10 py-2 text-[11px] font-semibold tracking-widest text-accent transition-colors hover:bg-accent/20 disabled:opacity-30"
+                    >
+                      {autoExecLoading ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          RUNNING_STRATEGY...
+                        </>
+                      ) : (
+                        <>
+                          <Play className="h-3.5 w-3.5" />
+                          AUTO_EXECUTE_NOW
+                        </>
+                      )}
+                    </button>
+
+                    {!agent.active && (
+                      <div className="text-[10px] text-red-400">
+                        &gt; Agent is INACTIVE. Toggle it on to run auto execution.
+                      </div>
+                    )}
+
+                    {autoExecReason && (
+                      <div className="border border-border/30 bg-surface/70 px-3 py-2">
+                        <div className="mb-1 text-[9px] font-semibold tracking-widest text-muted">
+                          STRATEGY_REASON
+                        </div>
+                        <div className="text-[10px] leading-relaxed">
+                          &gt; {autoExecReason}
+                        </div>
+                      </div>
+                    )}
+
+                    {autoExecHash && (
+                      <div className="flex items-center gap-2 border border-accent/40 bg-accent/5 px-3 py-2">
+                        <CheckCircle className="h-3.5 w-3.5 text-accent" />
+                        <span className="text-[10px] tracking-wider text-accent">
+                          AUTO EXECUTION SUCCESS
+                        </span>
+                        <a
+                          href={txExplorerUrl(autoExecHash)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="ml-auto flex items-center gap-1 text-[10px] text-accent underline"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                          Explorer
+                        </a>
+                      </div>
+                    )}
+
+                    {autoExecError && (
+                      <div className="flex items-center gap-2 border border-red-500/40 bg-red-500/5 px-3 py-2 text-[10px]">
+                        <XCircle className="h-3.5 w-3.5 text-red-400" />
+                        <span className="tracking-wider text-red-400">
+                          {autoExecError}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             </>
