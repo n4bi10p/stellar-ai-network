@@ -209,10 +209,7 @@ export default function Home() {
       <main className="hud-grid flex min-w-0 flex-1 flex-col">
         {/* Terminal prompt bar */}
         <div className="flex items-center justify-between border-b border-border/40 bg-surface/50 px-4 py-2 text-xs">
-          <span className="text-muted">
-            root@stellar-os:~/agents/alpha-01 ${" "}
-            <span className="inline-block h-3.5 w-1.5 animate-pulse bg-foreground" />
-          </span>
+          <span className="text-muted"></span>
           <div className="flex items-center gap-2">
             {connected ? (
               <>

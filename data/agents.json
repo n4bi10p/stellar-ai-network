@@ -18,5 +18,15 @@
     "txHash": "a452b521c4f74eedbdf7c57b2b229c37c93588173c25dcd02dc3e5fbe48267fc",
     "id": "e199a1e0-b4f0-4984-812a-1e34ed564752",
     "createdAt": "2026-02-17T10:21:48.892Z"
+  },
+  {
+    "contractId": "CAGIKMTM5ZGZZLYDHFI3EOI6GTJX7ODAJN2PW4JXNMNXKOFD5FBTQJKB",
+    "owner": "GCBWJPGRPE5DBX7L3UU5NJXR6I4SWXSXNAWBWWKXJLK33LGUM4S4H3OP",
+    "name": "example 1",
+    "strategy": "auto_rebalance",
+    "templateId": "auto_rebalance",
+    "txHash": "a2a72cf81e6ab4183a9d469709332472a98ecb0280445b56aced12a937f47e4f",
+    "id": "5376e3ec-bdad-4bb3-9f3f-69ea28158f42",
+    "createdAt": "2026-02-17T12:27:08.210Z"
   }
 ]

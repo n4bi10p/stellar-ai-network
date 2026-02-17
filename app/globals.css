@@ -75,6 +75,6 @@ body {
 
 /* ── Selection ── */
 ::selection {
-  background: rgba(var(--ac), 0.25);
-  color: rgb(var(--fg));
+  background: #2563eb; /* blue-600 */
+  color: #fff;
 }
