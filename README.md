@@ -214,6 +214,15 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 # ── Soroban Contract (already deployed) ──
 NEXT_PUBLIC_AGENT_CONTRACT_ID=CAGIKMTM5ZGZZLYDHFI3EOI6GTJX7ODAJN2PW4JXNMNXKOFD5FBTQJKB
+
+# ── Agent Store Backend (Phase 0) ──
+# json | redis
+AGENT_STORE_BACKEND=json
+
+# Redis (Upstash REST) - required when AGENT_STORE_BACKEND=redis
+UPSTASH_REDIS_REST_URL=
+UPSTASH_REDIS_REST_TOKEN=
+AGENTS_STORE_REDIS_KEY=agents:all
 ```
 
 ### Run Development Server
@@ -242,6 +251,23 @@ npm run test:watch
 
 # Run Rust contract tests (5 tests)
 cd contracts && bash scripts/test.sh
+```
+
+### Store Health + Redis Migration (Phase 0)
+
+Check active store backend:
+
+```bash
+curl http://localhost:3000/api/internal/store-health
+```
+
+Migrate local JSON agents into Redis:
+
+```bash
+AGENT_STORE_BACKEND=redis \
+UPSTASH_REDIS_REST_URL=... \
+UPSTASH_REDIS_REST_TOKEN=... \
+npm run migrate:agents:redis
 ```
 
 **Test coverage:** 55 total tests

@@ -41,3 +41,4 @@ screen.png
 # rust / soroban build artifacts
 contracts/agent/target/
 LEVEL4_IMPLEMENTATION_PLAN.md
+data/agents.json
