@@ -22,6 +22,20 @@ export interface StoredAgent {
   /** Auto-execution control (used later by cron in Phase 2) */
   autoExecuteEnabled?: boolean;
 
+  /** Reminder preferences (Phase 1) */
+  reminders?: {
+    channels?: {
+      inApp?: boolean;
+      email?: boolean;
+      telegram?: boolean;
+      discord?: boolean;
+    };
+    emailAddress?: string;
+    telegramChatId?: string;
+    discordWebhookUrl?: string;
+    digestMode?: "instant" | "daily";
+  };
+
   /** Scheduling + telemetry */
   lastExecutionAt?: string | null; // ISO 8601
   nextExecutionAt?: string | null; // ISO 8601

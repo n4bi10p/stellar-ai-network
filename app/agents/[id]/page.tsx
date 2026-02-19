@@ -30,6 +30,19 @@ interface AgentData {
   executions: number;
 }
 
+interface ReminderPrefs {
+  channels?: {
+    inApp?: boolean;
+    email?: boolean;
+    telegram?: boolean;
+    discord?: boolean;
+  };
+  emailAddress?: string;
+  telegramChatId?: string;
+  discordWebhookUrl?: string;
+  digestMode?: "instant" | "daily";
+}
+
 export default function AgentDetailPage() {
   const params = useParams();
   const contractId = params.id as string;
@@ -55,6 +68,13 @@ export default function AgentDetailPage() {
   // Toggle state
   const [toggling, setToggling] = useState(false);
 
+  // Reminder prefs (stored agent metadata)
+  const [agentStoreId, setAgentStoreId] = useState<string | null>(null);
+  const [reminders, setReminders] = useState<ReminderPrefs>({});
+  const [remindersSaving, setRemindersSaving] = useState(false);
+  const [remindersError, setRemindersError] = useState("");
+  const [remindersSaved, setRemindersSaved] = useState(false);
+
   // Fetch on-chain config
   const fetchConfig = useCallback(async () => {
     setLoadingConfig(true);
@@ -79,6 +99,30 @@ export default function AgentDetailPage() {
   useEffect(() => {
     fetchConfig();
   }, [fetchConfig]);
+
+  // Fetch stored agent metadata for reminders
+  const fetchStoredAgent = useCallback(async () => {
+    if (!address) return;
+    try {
+      const res = await fetch(`/api/agents?owner=${address}`);
+      if (!res.ok) throw new Error("Failed to load agent metadata");
+      const { agents } = await res.json();
+      const matching = (agents as Array<{ id: string; contractId: string; createdAt: string; reminders?: ReminderPrefs }>)
+        .filter((a) => a.contractId === contractId)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      const latest = matching[0];
+      if (latest) {
+        setAgentStoreId(latest.id);
+        setReminders(latest.reminders ?? {});
+      }
+    } catch (err) {
+      console.error("Failed to load reminders:", err);
+    }
+  }, [address, contractId]);
+
+  useEffect(() => {
+    if (connected && address) fetchStoredAgent();
+  }, [connected, address, fetchStoredAgent]);
 
   // Execute agent
   async function handleExecute(e: React.FormEvent) {
@@ -226,6 +270,29 @@ export default function AgentDetailPage() {
       setToggleError(getErrorMessage(err));
     } finally {
       setToggling(false);
+    }
+  }
+
+  async function handleSaveReminders() {
+    if (!agentStoreId) return;
+    setRemindersSaving(true);
+    setRemindersError("");
+    setRemindersSaved(false);
+    try {
+      const res = await fetch(`/api/agents/${agentStoreId}/reminders`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(reminders),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to save reminders");
+      }
+      setRemindersSaved(true);
+    } catch (err) {
+      setRemindersError(getErrorMessage(err));
+    } finally {
+      setRemindersSaving(false);
     }
   }
 
@@ -482,6 +549,161 @@ export default function AgentDetailPage() {
                         <span className="tracking-wider text-red-400">
                           {autoExecError}
                         </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* REMINDERS */}
+              <div className="mt-6">
+                <div className="mb-3 text-[10px] tracking-widest text-muted">
+                  {"// REMINDERS"}
+                </div>
+                {!connected ? (
+                  <div className="border border-border/40 bg-surface/80 px-4 py-4 text-center text-[10px] text-muted">
+                    &gt; Connect wallet to configure reminders
+                  </div>
+                ) : !agentStoreId ? (
+                  <div className="border border-border/40 bg-surface/80 px-4 py-4 text-[10px] text-muted">
+                    &gt; No stored agent record found for this contract.
+                  </div>
+                ) : (
+                  <div className="space-y-3 border border-border/40 bg-surface/80 px-4 py-4 text-[10px] tracking-wider">
+                    <div className="grid grid-cols-2 gap-3">
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={reminders.channels?.inApp ?? true}
+                          onChange={(e) =>
+                            setReminders((prev) => ({
+                              ...prev,
+                              channels: { ...(prev.channels ?? {}), inApp: e.target.checked },
+                            }))
+                          }
+                        />
+                        IN_APP
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={reminders.channels?.email ?? false}
+                          onChange={(e) =>
+                            setReminders((prev) => ({
+                              ...prev,
+                              channels: { ...(prev.channels ?? {}), email: e.target.checked },
+                            }))
+                          }
+                        />
+                        EMAIL
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={reminders.channels?.telegram ?? false}
+                          onChange={(e) =>
+                            setReminders((prev) => ({
+                              ...prev,
+                              channels: { ...(prev.channels ?? {}), telegram: e.target.checked },
+                            }))
+                          }
+                        />
+                        TELEGRAM
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={reminders.channels?.discord ?? false}
+                          onChange={(e) =>
+                            setReminders((prev) => ({
+                              ...prev,
+                              channels: { ...(prev.channels ?? {}), discord: e.target.checked },
+                            }))
+                          }
+                        />
+                        DISCORD
+                      </label>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div>
+                        <div className="mb-1 text-[9px] tracking-widest text-muted">EMAIL_ADDRESS</div>
+                        <input
+                          type="email"
+                          value={reminders.emailAddress ?? ""}
+                          onChange={(e) =>
+                            setReminders((prev) => ({ ...prev, emailAddress: e.target.value }))
+                          }
+                          className="w-full border border-border/40 bg-surface/90 px-3 py-2 text-xs outline-none placeholder:text-muted/40 focus:border-accent/50"
+                          placeholder="name@example.com"
+                        />
+                      </div>
+                      <div>
+                        <div className="mb-1 text-[9px] tracking-widest text-muted">TELEGRAM_CHAT_ID</div>
+                        <input
+                          type="text"
+                          value={reminders.telegramChatId ?? ""}
+                          onChange={(e) =>
+                            setReminders((prev) => ({ ...prev, telegramChatId: e.target.value }))
+                          }
+                          className="w-full border border-border/40 bg-surface/90 px-3 py-2 text-xs outline-none placeholder:text-muted/40 focus:border-accent/50"
+                          placeholder="123456789"
+                        />
+                      </div>
+                      <div>
+                        <div className="mb-1 text-[9px] tracking-widest text-muted">DISCORD_WEBHOOK_URL</div>
+                        <input
+                          type="text"
+                          value={reminders.discordWebhookUrl ?? ""}
+                          onChange={(e) =>
+                            setReminders((prev) => ({ ...prev, discordWebhookUrl: e.target.value }))
+                          }
+                          className="w-full border border-border/40 bg-surface/90 px-3 py-2 text-xs outline-none placeholder:text-muted/40 focus:border-accent/50"
+                          placeholder="https://discord.com/api/webhooks/..."
+                        />
+                      </div>
+                      <div>
+                        <div className="mb-1 text-[9px] tracking-widest text-muted">DIGEST_MODE</div>
+                        <select
+                          value={reminders.digestMode ?? "instant"}
+                          onChange={(e) =>
+                            setReminders((prev) => ({
+                              ...prev,
+                              digestMode: e.target.value as "instant" | "daily",
+                            }))
+                          }
+                          className="w-full border border-border/40 bg-surface/90 px-3 py-2 text-xs outline-none focus:border-accent/50"
+                        >
+                          <option value="instant">INSTANT</option>
+                          <option value="daily">DAILY</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleSaveReminders}
+                      disabled={remindersSaving}
+                      className="flex w-full items-center justify-center gap-2 border border-accent/50 bg-accent/10 py-2 text-[11px] font-semibold tracking-widest text-accent transition-colors hover:bg-accent/20 disabled:opacity-30"
+                    >
+                      {remindersSaving ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          SAVING...
+                        </>
+                      ) : (
+                        "SAVE_REMINDERS"
+                      )}
+                    </button>
+
+                    {remindersSaved && (
+                      <div className="text-[10px] text-accent">
+                        &gt; Reminders saved
+                      </div>
+                    )}
+                    {remindersError && (
+                      <div className="text-[10px] text-red-400">
+                        &gt; {remindersError}
                       </div>
                     )}
                   </div>
