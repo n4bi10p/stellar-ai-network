@@ -3,7 +3,7 @@ import { decideRecurringPayment } from "./recurring_payment";
 import { decidePriceAlert } from "./price_alert";
 import { decideAutoRebalance } from "./auto_rebalance";
 
-export { StrategyContext, StrategyDecision, StrategyId } from "./types";
+export type { StrategyContext, StrategyDecision, StrategyId } from "./types";
 
 export async function decideStrategy(
   ctx: StrategyContext
@@ -16,4 +16,3 @@ export async function decideStrategy(
 
   return { shouldExecute: false, reason: `Unknown strategy: ${String(id)}`, nextExecutionAt: null };
 }
-

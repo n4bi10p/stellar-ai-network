@@ -20,7 +20,7 @@ export default function MarketplacePage() {
           <div className="flex items-center justify-between">
             <div>
               <div className="text-xs font-semibold tracking-widest">
-                MARKETPLACE // AGENT_TEMPLATES
+                {"MARKETPLACE // AGENT_TEMPLATES"}
               </div>
               <div className="mt-1 text-[10px] tracking-wider text-muted">
                 &gt; Browse pre-built agent configurations and deploy with one
@@ -41,7 +41,7 @@ export default function MarketplacePage() {
           {/* Template count */}
           <div className="mb-4 flex items-center justify-between">
             <div className="text-[10px] tracking-widest text-muted">
-              // {AGENT_TEMPLATES.length} TEMPLATES AVAILABLE
+              {`// ${AGENT_TEMPLATES.length} TEMPLATES AVAILABLE`}
             </div>
           </div>
 
@@ -115,7 +115,7 @@ export default function MarketplacePage() {
           {/* Coming soon section */}
           <div className="mt-8">
             <div className="mb-3 text-[10px] tracking-widest text-muted">
-              // COMING_SOON
+              {"// COMING_SOON"}
             </div>
             <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
               {[

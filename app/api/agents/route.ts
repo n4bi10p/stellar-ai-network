@@ -8,7 +8,7 @@ import { readAgents, addAgent, getAgentsByOwner } from "@/lib/store/agents";
 export async function GET(request: NextRequest) {
   try {
     const owner = request.nextUrl.searchParams.get("owner");
-    const agents = owner ? getAgentsByOwner(owner) : readAgents();
+    const agents = owner ? await getAgentsByOwner(owner) : await readAgents();
     return NextResponse.json({ agents });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to list agents";
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     const xdr = await buildInitialize(contractId, owner, name, strategy, owner);
 
     // Persist agent metadata in server-side store (include optional strategyConfig)
-    const stored = addAgent({
+    const stored = await addAgent({
       contractId,
       owner,
       name,

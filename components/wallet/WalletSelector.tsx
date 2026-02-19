@@ -18,19 +18,22 @@ export function WalletSelector({
   onClose: () => void;
 }) {
   const { connect, loading } = useWallet();
-  const [detected, setDetected] = useState<WalletId[]>([]);
-  const [checking, setChecking] = useState(true);
+  const [detected, setDetected] = useState<WalletId[] | null>(null);
+  const checking = open && detected === null;
   const [connectingId, setConnectingId] = useState<WalletId | null>(null);
 
   // Detect which wallets are installed
   useEffect(() => {
     if (!open) return;
-    setChecking(true);
+    let cancelled = false;
     (async () => {
+      setDetected(null);
       const ids = await useWallet.getState().detectWallets();
-      setDetected(ids);
-      setChecking(false);
+      if (!cancelled) setDetected(ids);
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [open]);
 
   if (!open) return null;
@@ -70,7 +73,7 @@ export function WalletSelector({
           ) : (
             WALLET_PROVIDERS.map((provider) => {
               const available =
-                detected.includes(provider.meta.id) ||
+                (detected ?? []).includes(provider.meta.id) ||
                 provider.meta.id === "albedo"; // Albedo is always available
               const isConnecting = connectingId === provider.meta.id;
 

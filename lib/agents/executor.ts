@@ -25,7 +25,7 @@ export async function executeAgentOnce(options: {
   submit?: boolean;
 }): Promise<AgentExecutionResult & { xdr?: string }> {
   const { agentId, sourceAddress, submit = true } = options;
-  const agent = getAgentById(agentId);
+  const agent = await getAgentById(agentId);
   if (!agent) {
     return {
       agentId,
@@ -52,7 +52,7 @@ export async function executeAgentOnce(options: {
   const decision = await decideStrategy(ctx);
 
   // Persist any state / schedule changes even when not executing
-  updateAgentStrategy(agentId, {
+  await updateAgentStrategy(agentId, {
     strategyState: decision.statePatch,
     nextExecutionAt: decision.nextExecutionAt ?? null,
   });
@@ -99,7 +99,7 @@ export async function executeAgentOnce(options: {
   try {
     const result = await submitSorobanTx(xdr);
     const nowIso = new Date().toISOString();
-    recordAgentExecution(agentId, {
+    await recordAgentExecution(agentId, {
       lastExecutionAt: nowIso,
       nextExecutionAt: decision.nextExecutionAt ?? null,
     });
@@ -133,7 +133,7 @@ export async function executeAllAgentsForOwner(options: {
   submit?: boolean;
 }): Promise<AgentExecutionResult[]> {
   const { ownerAddress, sourceAddressOverride, submit = true } = options;
-  const agents: StoredAgent[] = getAgentsByOwner(ownerAddress);
+  const agents: StoredAgent[] = await getAgentsByOwner(ownerAddress);
 
   const active = agents.filter(
     (a) => a.autoExecuteEnabled && a.contractId && a.strategy
@@ -151,4 +151,3 @@ export async function executeAllAgentsForOwner(options: {
   }
   return results;
 }
-

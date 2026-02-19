@@ -95,7 +95,7 @@ export default function AgentsPage() {
           <div className="flex items-center justify-between">
             <div>
               <div className="text-xs font-semibold tracking-widest">
-                AGENTS // DEPLOYED_LIST
+                {"AGENTS // DEPLOYED_LIST"}
               </div>
               <div className="mt-1 text-[10px] tracking-wider text-muted">
                 &gt; View and manage all your deployed AI agents

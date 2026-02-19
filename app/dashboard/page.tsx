@@ -122,7 +122,9 @@ export default function DashboardPage() {
           {/* Template Browser */}
           {showTemplates && (
             <div className="mb-6">
-              <div className="mb-3 text-[10px] tracking-widest text-muted">// AGENT_TEMPLATES</div>
+                <div className="mb-3 text-[10px] tracking-widest text-muted">
+                  {"// AGENT_TEMPLATES"}
+                </div>
               <div className="grid grid-cols-3 gap-3">
                 {AGENT_TEMPLATES.map((t) => (
                   <Link
@@ -168,7 +170,9 @@ export default function DashboardPage() {
 
           {/* Agent list */}
           <div className="mt-6">
-            <div className="mb-3 text-[10px] tracking-widest text-muted">// DEPLOYED_AGENTS</div>
+            <div className="mb-3 text-[10px] tracking-widest text-muted">
+              {"// DEPLOYED_AGENTS"}
+            </div>
 
             {!connected ? (
               <div className="border border-border/40 bg-surface/80 px-6 py-8 text-center">

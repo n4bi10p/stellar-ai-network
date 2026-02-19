@@ -23,7 +23,7 @@ export async function POST(
     }
 
     // Find the MOST RECENT agent in the JSON store for this owner + contractId.
-    const ownerAgents = getAgentsByOwner(sourceAddress);
+    const ownerAgents = await getAgentsByOwner(sourceAddress);
     const matching = ownerAgents.filter((a) => a.contractId === contractId);
     // Prefer the newest entry (highest createdAt)
     const agent = matching
@@ -70,4 +70,3 @@ export async function POST(
     );
   }
 }
-

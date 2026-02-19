@@ -69,7 +69,7 @@ export function HudShell({ children }: { children: React.ReactNode }) {
 
           <div className="flex-1 px-3 py-3">
             <div className="mb-2 px-1 text-[10px] tracking-widest text-muted">
-              // NAVIGATION
+              {"// NAVIGATION"}
             </div>
             <nav className="space-y-1">
               {navItems.map((item) => {

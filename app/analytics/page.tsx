@@ -37,9 +37,12 @@ export default function AnalyticsPage() {
       if (!res.ok) throw new Error("fetch failed");
       const { agents: stored } = await res.json();
 
+      type StoredAgentLite = Pick<
+        AgentStat,
+        "id" | "name" | "strategy" | "contractId" | "createdAt"
+      >;
       const stats: AgentStat[] = await Promise.all(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (stored as any[]).map(async (a) => {
+        (stored as StoredAgentLite[]).map(async (a) => {
           try {
             const cfg = await readConfig(a.contractId);
             return {
@@ -111,7 +114,7 @@ export default function AnalyticsPage() {
           <div className="flex items-center justify-between">
             <div>
               <div className="text-xs font-semibold tracking-widest">
-                ANALYTICS // PERFORMANCE_METRICS
+                {"ANALYTICS // PERFORMANCE_METRICS"}
               </div>
               <div className="mt-1 text-[10px] tracking-wider text-muted">
                 &gt; Agent execution analytics and performance overview
@@ -238,7 +241,7 @@ export default function AnalyticsPage() {
               {/* Per-agent execution table */}
               <div className="mt-6">
                 <div className="mb-3 text-[10px] tracking-widest text-muted">
-                  // AGENT_EXECUTION_RANKING
+                  {"// AGENT_EXECUTION_RANKING"}
                 </div>
                 {agents.length === 0 ? (
                   <div className="border border-border/40 bg-surface/80 px-4 py-6 text-center text-sm text-muted">

@@ -327,7 +327,9 @@ export default function AgentDetailPage() {
 
               {/* Execute Agent */}
               <div className="mt-6">
-                <div className="mb-3 text-[10px] tracking-widest text-muted">// EXECUTE_AGENT</div>
+                <div className="mb-3 text-[10px] tracking-widest text-muted">
+                  {"// EXECUTE_AGENT"}
+                </div>
                 {!connected ? (
                   <div className="border border-border/40 bg-surface/80 px-4 py-6 text-center text-sm text-muted">
                     &gt; Connect wallet to execute agent actions
@@ -412,7 +414,7 @@ export default function AgentDetailPage() {
               {/* AUTO EXECUTION */}
               <div className="mt-6">
                 <div className="mb-3 text-[10px] tracking-widest text-muted">
-                  // AUTO_EXECUTION
+                  {"// AUTO_EXECUTION"}
                 </div>
                 {!connected ? (
                   <div className="border border-border/40 bg-surface/80 px-4 py-4 text-center text-[10px] text-muted">

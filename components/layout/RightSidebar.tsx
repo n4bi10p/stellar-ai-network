@@ -27,7 +27,7 @@ export function RightSidebar({
       {/* Wallet Module */}
       <div className="border-b border-border/40 px-4 py-4">
         <div className="flex items-center justify-between text-[10px] tracking-wider text-muted">
-          <span>// WALLET_MODULE</span>
+          <span>{"// WALLET_MODULE"}</span>
           <span
             className={`rounded px-1.5 py-0.5 ${
               connected

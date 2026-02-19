@@ -158,7 +158,9 @@ function CreateAgentInner() {
               <ArrowLeft className="h-4 w-4" />
             </Link>
             <div>
-              <div className="text-xs font-semibold tracking-widest">AGENTS // CREATE_NEW</div>
+              <div className="text-xs font-semibold tracking-widest">
+                {"AGENTS // CREATE_NEW"}
+              </div>
               <div className="mt-1 text-[10px] tracking-wider text-muted">
                 &gt; Configure and deploy a new AI agent to Soroban
               </div>

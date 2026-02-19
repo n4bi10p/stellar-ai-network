@@ -9,7 +9,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const agent = getAgentById(id);
+    const agent = await getAgentById(id);
     if (!agent) {
       return NextResponse.json({ error: "Agent not found" }, { status: 404 });
     }
@@ -35,7 +35,7 @@ export async function PATCH(
       );
     }
 
-    updateAgentTxHash(id, txHash);
+    await updateAgentTxHash(id, txHash);
     return NextResponse.json({ success: true });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to update agent";
