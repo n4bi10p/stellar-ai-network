@@ -17,6 +17,63 @@ export interface AgentExecutionResult {
   error?: string;
 }
 
+export interface AgentDueResult {
+  agentId: string;
+  contractId: string;
+  due: boolean;
+  reason?: string;
+  nextExecutionAt?: string | null;
+}
+
+/** Evaluate an agent without executing. Updates strategy state + nextExecutionAt. */
+export async function evaluateAgentDue(options: {
+  agentId: string;
+  now?: Date;
+}): Promise<AgentDueResult> {
+  const { agentId, now } = options;
+  const agent = await getAgentById(agentId);
+  if (!agent) {
+    return {
+      agentId,
+      contractId: "",
+      due: false,
+      reason: "Agent not found",
+      nextExecutionAt: null,
+    };
+  }
+
+  const autoEnabled = agent.autoExecuteEnabled ?? true;
+  if (!autoEnabled) {
+    return {
+      agentId,
+      contractId: agent.contractId,
+      due: false,
+      reason: "Auto-execution disabled",
+      nextExecutionAt: agent.nextExecutionAt ?? null,
+    };
+  }
+
+  const ctx: StrategyContext = {
+    agent,
+    now: now ?? new Date(),
+  };
+
+  const decision = await decideStrategy(ctx);
+
+  await updateAgentStrategy(agentId, {
+    strategyState: decision.statePatch,
+    nextExecutionAt: decision.nextExecutionAt ?? null,
+  });
+
+  return {
+    agentId,
+    contractId: agent.contractId,
+    due: decision.shouldExecute,
+    reason: decision.reason,
+    nextExecutionAt: decision.nextExecutionAt ?? null,
+  };
+}
+
 /** Build + (optionally) submit an execute() call for a single agent. */
 export async function executeAgentOnce(options: {
   agentId: string;

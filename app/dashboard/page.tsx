@@ -16,6 +16,7 @@ import { useWallet } from "@/lib/hooks/useWallet";
 import { AGENT_TEMPLATES } from "@/lib/agents/templates";
 import { readConfig } from "@/lib/stellar/contracts";
 import { txExplorerUrl } from "@/lib/utils/constants";
+import type { AgentDueResult } from "@/lib/agents/executor";
 
 interface DashboardAgent {
   id: string;
@@ -38,6 +39,8 @@ export default function DashboardPage() {
   const [agents, setAgents] = useState<DashboardAgent[]>([]);
   const [loading, setLoading] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
+  const [dueAgents, setDueAgents] = useState<AgentDueResult[]>([]);
+  const [dueLoading, setDueLoading] = useState(false);
 
   const fetchAgents = useCallback(async () => {
     if (!address) return;
@@ -67,9 +70,27 @@ export default function DashboardPage() {
     }
   }, [address]);
 
+  const fetchDueAgents = useCallback(async () => {
+    if (!address) return;
+    setDueLoading(true);
+    try {
+      const res = await fetch(`/api/agents/due?owner=${address}`);
+      if (!res.ok) throw new Error("Failed to fetch due agents");
+      const { due } = await res.json();
+      setDueAgents((due as AgentDueResult[]) ?? []);
+    } catch (err) {
+      console.error("Due agents fetch error:", err);
+    } finally {
+      setDueLoading(false);
+    }
+  }, [address]);
+
   useEffect(() => {
-    if (connected && address) fetchAgents();
-  }, [connected, address, fetchAgents]);
+    if (connected && address) {
+      fetchAgents();
+      fetchDueAgents();
+    }
+  }, [connected, address, fetchAgents, fetchDueAgents]);
 
   // Stats
   const totalAgents = agents.length;
@@ -166,6 +187,50 @@ export default function DashboardPage() {
               <div className="text-[10px] tracking-wider text-muted">SUCCESS_RATE</div>
               <div className="mt-1 text-xl font-bold text-accent">{successRate}%</div>
             </div>
+          </div>
+
+          {/* Due Agents */}
+          <div className="mt-6">
+            <div className="mb-3 text-[10px] tracking-widest text-muted">
+              {"// DUE_AGENTS"}
+            </div>
+            {!connected ? (
+              <div className="border border-border/40 bg-surface/80 px-6 py-6 text-center text-sm text-muted">
+                <div>&gt; Connect your wallet to view due agents</div>
+              </div>
+            ) : dueLoading ? (
+              <div className="flex items-center justify-center gap-2 border border-border/40 bg-surface/80 px-6 py-6 text-sm text-muted">
+                <Loader2 className="h-4 w-4 animate-spin" /> Loading due agents...
+              </div>
+            ) : dueAgents.length === 0 ? (
+              <div className="border border-border/40 bg-surface/80 px-6 py-6 text-center text-sm text-muted">
+                <div>&gt; No agents due right now</div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {dueAgents.map((due) => {
+                  const agent = agents.find((a) => a.id === due.agentId);
+                  return (
+                    <Link
+                      key={due.agentId}
+                      href={`/agents/${due.contractId}`}
+                      className="flex items-center justify-between border border-border/40 bg-surface/80 px-4 py-3 transition-colors hover:bg-surface-2/80"
+                    >
+                      <div>
+                        <div className="text-xs font-bold tracking-wider">
+                          {agent?.name ?? due.contractId.slice(0, 12)}
+                        </div>
+                        <div className="mt-0.5 text-[10px] tracking-wider text-muted">
+                          {agent?.strategy ?? "strategy"} —{" "}
+                          {due.reason ?? "Due for execution"}
+                        </div>
+                      </div>
+                      <div className="text-[10px] text-accent">OPEN &rarr;</div>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Agent list */}
