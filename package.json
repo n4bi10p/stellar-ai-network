@@ -41,5 +41,9 @@
     "tailwindcss": "4.1.18",
     "typescript": "5.9.3",
     "vitest": "^4.0.18"
+  },
+  "overrides": {
+    "ajv": "6.14.0",
+    "minimatch": "^10.2.1"
   }
 }

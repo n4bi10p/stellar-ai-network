@@ -1,0 +1,17 @@
+name: External Cron Scheduler
+
+on:
+  schedule:
+    # Run every 10 minutes. 
+    # Note: GitHub Actions schedule can sometimes be delayed by a few minutes during high load.
+    - cron: '*/10 * * * *'
+  workflow_dispatch: # Allows manual triggering from GitHub Actions tab
+
+jobs:
+  trigger-cron:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Vercel Cron Endpoint
+        run: |
+          curl --fail -L -X GET "${{ secrets.APP_URL }}/api/cron/due-check" \
+          -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
