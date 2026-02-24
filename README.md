@@ -113,6 +113,10 @@ Stellar AI Agent Network is a platform where users interact with the Stellar blo
 
 [view](https://stellar.expert/explorer/testnet/tx/dc40915f1460db18cd7d70b0a8545af69f7fdaffc278d7b477b53cd44ea52371)
 
+### 6. Mobile View
+
+<img width="739" height="1600" alt="image" src="https://github.com/user-attachments/assets/ae3339b9-0a21-4c9f-ac96-b406c8b5a901" />
+
 ---
 
 ## Features
