@@ -417,8 +417,8 @@ export default function AgentDetailPage() {
     <HudShell>
       <main className="hud-grid flex min-w-0 flex-1 flex-col overflow-y-auto">
         {/* Header */}
-        <div className="border-b border-border/40 bg-surface/50 px-6 py-4">
-          <div className="flex items-center justify-between">
+        <div className="border-b border-border/40 bg-surface/50 px-3 py-4 sm:px-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
               <Link
                 href="/dashboard"
@@ -435,7 +435,7 @@ export default function AgentDetailPage() {
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {agent && (
                 <>
                   <span
@@ -468,7 +468,7 @@ export default function AgentDetailPage() {
           </div>
         </div>
 
-        <div className="flex-1 p-6">
+        <div className="flex-1 p-3 sm:p-6">
           {loadingConfig ? (
             <div className="flex items-center gap-2 py-8 text-sm text-muted">
               <Loader2 className="h-4 w-4 animate-spin" /> Loading contract config...
@@ -480,7 +480,7 @@ export default function AgentDetailPage() {
           ) : (
             <>
               {/* Agent info grid */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="border border-border/40 bg-surface/80 px-4 py-3">
                   <div className="text-[10px] tracking-wider text-muted">STRATEGY</div>
                   <div className="mt-1 text-sm font-semibold">{agent.strategy}</div>
@@ -676,7 +676,7 @@ export default function AgentDetailPage() {
                   </div>
                 ) : (
                   <div className="space-y-3 border border-border/40 bg-surface/80 px-4 py-4 text-[10px] tracking-wider">
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                       {(["manual", "assisted_auto", "full_auto"] as const).map((mode) => (
                         <label key={mode} className="flex items-center gap-2 border border-border/30 px-2 py-1.5">
                           <input
@@ -774,7 +774,7 @@ export default function AgentDetailPage() {
                   </div>
                 ) : (
                   <div className="space-y-3 border border-border/40 bg-surface/80 px-4 py-4 text-[10px] tracking-wider">
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <label className="flex items-center gap-2">
                         <input
                           type="checkbox"
@@ -919,7 +919,7 @@ export default function AgentDetailPage() {
       </main>
 
       {/* Right sidebar */}
-      <aside className="flex w-[280px] shrink-0 flex-col border-l border-border/60 bg-surface">
+      <aside className="hidden w-[280px] shrink-0 lg:flex flex-col border-l border-border/60 bg-surface">
         <div className="border-b border-border/40 px-4 py-3">
           <div className="text-xs font-semibold tracking-widest">AGENT_INFO</div>
         </div>

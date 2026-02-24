@@ -17,9 +17,9 @@ import type { ChatMessage, TransactionResult } from "@/lib/stellar/types";
 import { AGENT_TEMPLATES } from "@/lib/agents/templates";
 
 /* ── Help text ── */
-const HELP_MESSAGE = `> ═══════════════════════════════════════
-> STELLAR_AI AGENT — COMMAND REFERENCE
-> ═══════════════════════════════════════
+const HELP_MESSAGE = `> --------------------------------
+> STELLAR_AI AGENT COMMAND REFERENCE
+> --------------------------------
 >
 > WALLET COMMANDS:
 >   connect wallet    — Open wallet selector (Freighter / Albedo / Rabet)
@@ -46,7 +46,17 @@ const HELP_MESSAGE = `> ══════════════════�
 >   clear      — Clear chat history
 >   status     — Show system status
 >
-> ═══════════════════════════════════════`;
+> --------------------------------`;
+
+const GREETING_MESSAGE = `> Hello, operator.
+> I am STELLAR_AI, your on-chain AI agent assistant for Stellar Testnet.
+> I can help you:
+>   • Check wallet balances and status
+>   • Send XLM transactions safely
+>   • Deploy and manage autonomous Stellar agents
+>   • Configure execution modes, reminders, and automation flows
+>
+> Type 'help' to see all available commands.`;
 
 export default function Home() {
   const router = useRouter();
@@ -128,7 +138,7 @@ export default function Home() {
       ).join("\n");
       addMessage(
         "agent",
-        `> ═══════════════════════════════════════\n> AVAILABLE AGENT TEMPLATES\n> ═══════════════════════════════════════\n${templateList}\n>\n> Use 'create agent' to deploy one, or visit /marketplace for details.`
+        `> --------------------------------\n> AVAILABLE AGENT TEMPLATES\n> --------------------------------\n${templateList}\n>\n> Use 'create agent' to deploy one, or visit /marketplace for details.`
       );
       return;
     }
@@ -136,6 +146,13 @@ export default function Home() {
     // Allow help/clear even without wallet
     if (trimmed.toLowerCase() === "help" || trimmed.toLowerCase() === "?") {
       addMessage("agent", HELP_MESSAGE);
+      return;
+    }
+
+    const greetingPattern =
+      /^(hi|hello|hey|yo|sup|gm|good morning|good afternoon|good evening|namaste|salam|hola)\b/i;
+    if (greetingPattern.test(trimmed)) {
+      addMessage("agent", GREETING_MESSAGE);
       return;
     }
 
@@ -196,6 +213,11 @@ export default function Home() {
         return;
       }
 
+      if (parsed.action === "greet") {
+        addMessage("agent", GREETING_MESSAGE);
+        return;
+      }
+
       addMessage("agent", `> Command parsed: ${JSON.stringify(parsed)}\n> No handler for this action yet.`);
     } catch (err) {
       const msg = getErrorMessage(err);
@@ -208,9 +230,9 @@ export default function Home() {
       {/* ─── Center Content ─── */}
       <main className="hud-grid flex min-w-0 flex-1 flex-col">
         {/* Terminal prompt bar */}
-        <div className="flex items-center justify-between border-b border-border/40 bg-surface/50 px-4 py-2 text-xs">
+        <div className="flex flex-col gap-2 border-b border-border/40 bg-surface/50 px-3 py-2 text-xs sm:flex-row sm:items-center sm:justify-between sm:px-4">
           <span className="text-muted"></span>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {connected ? (
               <>
                 <span className="rounded border border-accent/40 bg-accent/10 px-2 py-0.5 text-[10px] text-accent">
@@ -244,7 +266,7 @@ export default function Home() {
         </div>
 
         {/* Chat / Agent Conversation */}
-        <div ref={scrollRef} className="flex-1 space-y-5 overflow-y-auto p-5">
+        <div ref={scrollRef} className="flex-1 space-y-5 overflow-y-auto p-3 sm:p-5">
           {/* Welcome message */}
           {messages.length === 0 && (
             <div>
@@ -302,7 +324,7 @@ export default function Home() {
                 <span className="text-muted">@ {msg.timestamp}</span>
               </div>
               <div
-                className={`mt-2 border px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
+                className={`mt-2 border px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] ${
                   msg.role === "user"
                     ? "max-w-lg border-border/40 bg-surface-2/80"
                     : msg.txResult && !msg.txResult.success

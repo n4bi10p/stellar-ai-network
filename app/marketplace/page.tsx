@@ -18,8 +18,8 @@ export default function MarketplacePage() {
     <HudShell>
       <main className="hud-grid flex min-w-0 flex-1 flex-col overflow-y-auto">
         {/* Header */}
-        <div className="border-b border-border/40 bg-surface/50 px-6 py-4">
-          <div className="flex items-center justify-between">
+        <div className="border-b border-border/40 bg-surface/50 px-3 py-4 sm:px-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <div className="text-xs font-semibold tracking-widest">
                 {"MARKETPLACE // AGENT_TEMPLATES"}
@@ -39,7 +39,7 @@ export default function MarketplacePage() {
           </div>
         </div>
 
-        <div className="flex-1 p-6">
+        <div className="flex-1 p-3 sm:p-6">
           {/* Template count */}
           <div className="mb-4 flex items-center justify-between">
             <div className="text-[10px] tracking-widest text-muted">
@@ -118,7 +118,7 @@ export default function MarketplacePage() {
       </main>
 
       {/* Right sidebar */}
-      <aside className="flex w-[280px] shrink-0 flex-col border-l border-border/60 bg-surface">
+      <aside className="hidden w-[280px] shrink-0 lg:flex flex-col border-l border-border/60 bg-surface">
         <div className="border-b border-border/40 px-4 py-3">
           <div className="text-xs font-semibold tracking-widest">
             TEMPLATE_INFO

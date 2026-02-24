@@ -16,7 +16,7 @@ export function RightSidebar({
   const { connected, address, balance, activeWallet } = useWallet();
 
   return (
-    <aside className="flex w-[280px] shrink-0 flex-col overflow-y-auto border-l border-border/60 bg-surface">
+    <aside className="hidden w-[280px] shrink-0 flex-col overflow-y-auto border-l border-border/60 bg-surface lg:flex">
       {/* System Status */}
       <div className="border-b border-border/40 px-4 py-3">
         <div className="text-xs font-semibold tracking-widest">

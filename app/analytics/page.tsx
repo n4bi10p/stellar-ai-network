@@ -110,7 +110,7 @@ export default function AnalyticsPage() {
     <HudShell>
       <main className="hud-grid flex min-w-0 flex-1 flex-col overflow-y-auto">
         {/* Header */}
-        <div className="border-b border-border/40 bg-surface/50 px-6 py-4">
+        <div className="border-b border-border/40 bg-surface/50 px-3 py-4 sm:px-6">
           <div className="flex items-center justify-between">
             <div>
               <div className="text-xs font-semibold tracking-widest">
@@ -136,7 +136,7 @@ export default function AnalyticsPage() {
           </div>
         </div>
 
-        <div className="flex-1 p-6">
+        <div className="flex-1 p-3 sm:p-6">
           {!connected ? (
             <div className="border border-border/40 bg-surface/80 px-6 py-8 text-center">
               <div className="text-sm text-muted">
@@ -150,7 +150,7 @@ export default function AnalyticsPage() {
           ) : (
             <>
               {/* KPI cards */}
-              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <div className="border border-border/40 bg-surface/80 px-4 py-3">
                   <div className="flex items-center gap-1.5 text-[10px] tracking-wider text-muted">
                     <Zap className="h-3 w-3" /> TOTAL_AGENTS
@@ -182,7 +182,7 @@ export default function AnalyticsPage() {
               </div>
 
               {/* Active vs Inactive */}
-              <div className="mt-6 grid grid-cols-2 gap-3">
+              <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="border border-border/40 bg-surface/80 px-5 py-4">
                   <div className="mb-2 text-[10px] tracking-widest text-muted">
                     AGENT_STATUS_DISTRIBUTION
@@ -248,13 +248,13 @@ export default function AnalyticsPage() {
                     &gt; No agents to display
                   </div>
                 ) : (
-                  <div className="border border-border/40 bg-surface/80">
+                  <div className="overflow-x-auto border border-border/40 bg-surface/80">
                     {/* Table header */}
-                    <div className="grid grid-cols-12 gap-2 border-b border-border/40 px-4 py-2 text-[9px] tracking-widest text-muted">
+                    <div className="grid min-w-[760px] grid-cols-12 gap-2 border-b border-border/40 px-4 py-2 text-[9px] tracking-widest text-muted">
                       <div className="col-span-1">#</div>
                       <div className="col-span-3">AGENT</div>
-                      <div className="col-span-2">STRATEGY</div>
-                      <div className="col-span-2">STATUS</div>
+                      <div className="col-span-3">STRATEGY</div>
+                      <div className="col-span-1">STATUS</div>
                       <div className="col-span-2">EXECUTIONS</div>
                       <div className="col-span-2">PERFORMANCE</div>
                     </div>
@@ -265,20 +265,20 @@ export default function AnalyticsPage() {
                         <Link
                           key={agent.id}
                           href={`/agents/${agent.contractId}`}
-                          className="grid grid-cols-12 items-center gap-2 border-b border-border/20 px-4 py-2.5 text-xs transition-colors last:border-0 hover:bg-surface-2/50"
+                          className="grid min-w-[760px] grid-cols-12 items-center gap-2 border-b border-border/20 px-4 py-2.5 text-xs transition-colors last:border-0 hover:bg-surface-2/50"
                         >
                           <div className="col-span-1 font-mono text-muted">
                             {String(i + 1).padStart(2, "0")}
                           </div>
-                          <div className="col-span-3 font-bold tracking-wider">
+                          <div className="col-span-3 truncate font-bold tracking-wider">
                             {agent.name}
                           </div>
-                          <div className="col-span-2 text-[10px] text-muted">
+                          <div className="col-span-3 truncate text-[10px] text-muted">
                             {agent.strategy}
                           </div>
-                          <div className="col-span-2">
+                          <div className="col-span-1">
                             <span
-                              className={`rounded px-1.5 py-0.5 text-[9px] font-bold tracking-wider ${
+                              className={`inline-flex whitespace-nowrap rounded px-1.5 py-0.5 text-[9px] font-bold tracking-wider ${
                                 agent.active
                                   ? "bg-accent/20 text-accent"
                                   : "bg-red-500/20 text-red-400"
@@ -321,7 +321,7 @@ export default function AnalyticsPage() {
       </main>
 
       {/* Right sidebar */}
-      <aside className="flex w-[280px] shrink-0 flex-col border-l border-border/60 bg-surface">
+      <aside className="hidden w-[280px] shrink-0 xl:flex flex-col border-l border-border/60 bg-surface">
         <div className="border-b border-border/40 px-4 py-3">
           <div className="text-xs font-semibold tracking-widest">
             METRICS_PANEL

@@ -91,8 +91,8 @@ export default function AgentsPage() {
     <HudShell>
       <main className="hud-grid flex min-w-0 flex-1 flex-col overflow-y-auto">
         {/* Header */}
-        <div className="border-b border-border/40 bg-surface/50 px-6 py-4">
-          <div className="flex items-center justify-between">
+        <div className="border-b border-border/40 bg-surface/50 px-3 py-4 sm:px-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <div className="text-xs font-semibold tracking-widest">
                 {"AGENTS // DEPLOYED_LIST"}
@@ -101,7 +101,7 @@ export default function AgentsPage() {
                 &gt; View and manage all your deployed AI agents
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Link
                 href="/agents/create"
                 className="flex items-center gap-1.5 rounded border border-accent/50 bg-accent/10 px-3 py-1.5 text-[11px] tracking-wider text-accent transition-colors hover:bg-accent/20"
@@ -124,9 +124,9 @@ export default function AgentsPage() {
           </div>
         </div>
 
-        <div className="flex-1 p-6">
+        <div className="flex-1 p-3 sm:p-6">
           {/* Stats row */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div className="border border-border/40 bg-surface/80 px-4 py-3">
               <div className="text-[10px] tracking-wider text-muted">
                 TOTAL_AGENTS
@@ -150,7 +150,7 @@ export default function AgentsPage() {
           </div>
 
           {/* Filter row */}
-          <div className="mt-4 flex items-center gap-2">
+          <div className="mt-4 flex flex-wrap items-center gap-2">
             <Search className="h-3.5 w-3.5 text-muted" />
             {(["all", "active", "stopped"] as const).map((f) => (
               <button
@@ -165,7 +165,7 @@ export default function AgentsPage() {
                 {f.toUpperCase()}
               </button>
             ))}
-            <span className="ml-auto text-[10px] tracking-wider text-muted">
+            <span className="text-[10px] tracking-wider text-muted sm:ml-auto">
               {filtered.length} agent{filtered.length !== 1 ? "s" : ""}
             </span>
           </div>
@@ -271,7 +271,7 @@ export default function AgentsPage() {
       </main>
 
       {/* Right sidebar */}
-      <aside className="flex w-[280px] shrink-0 flex-col border-l border-border/60 bg-surface">
+      <aside className="hidden w-[280px] shrink-0 lg:flex flex-col border-l border-border/60 bg-surface">
         <div className="border-b border-border/40 px-4 py-3">
           <div className="text-xs font-semibold tracking-widest">
             AGENT_INDEX

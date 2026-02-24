@@ -19,7 +19,7 @@ export interface TransactionResult {
 
 /** AI-parsed command */
 export interface ParsedCommand {
-  action: "send_xlm" | "check_balance" | "create_agent";
+  action: "send_xlm" | "check_balance" | "create_agent" | "greet";
   destination?: string;
   amount?: string;
   confidence?: number;

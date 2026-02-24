@@ -6,13 +6,6 @@ const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
 export async function POST(request: NextRequest) {
   try {
-    if (!process.env.GEMINI_API_KEY) {
-      return NextResponse.json(
-        { error: "GEMINI_API_KEY not configured" },
-        { status: 500 }
-      );
-    }
-
     const { input } = await request.json();
 
     if (!input || typeof input !== "string") {
@@ -22,13 +15,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const prompt = `You are a Stellar blockchain agent parser. Parse this command into JSON.
+    const normalizedInput = input.trim().toLowerCase();
+    const greetingPattern =
+      /^(hi|hello|hey|yo|sup|gm|good morning|good afternoon|good evening|namaste|salam|hola)\b/;
+    if (greetingPattern.test(normalizedInput)) {
+      return NextResponse.json({ parsed: { action: "greet" } });
+    }
+
+    if (!process.env.GEMINI_API_KEY) {
+      return NextResponse.json(
+        { error: "GEMINI_API_KEY not configured" },
+        { status: 500 }
+      );
+    }
+
+    const prompt = `You are an intent classifier for the Stellar AI Agent Network.
+Classify the user command into exactly one action.
+
+Rules:
+- Use "greet" for greetings or small talk (hello/hi/hey/etc).
+- Use "check_balance" ONLY when the user explicitly asks about balance, funds, wallet amount, or holdings.
+- Use "create_agent" when the user wants to deploy/create an agent.
+- Use "send_xlm" only for transfer/payment intent and include destination + amount when available.
+- Never map a greeting to "check_balance".
 
 User command: "${input}"
 
 Return ONLY valid JSON with this structure:
 {
-  "action": "send_xlm" | "check_balance" | "create_agent",
+  "action": "send_xlm" | "check_balance" | "create_agent" | "greet",
   "destination": "GXXX..." (if sending — must be a full 56-character Stellar address starting with G),
   "amount": "100" (if sending — as a string number)
 }
@@ -38,6 +53,8 @@ Examples:
 "What's my balance?" → {"action":"check_balance"}
 "Check balance" → {"action":"check_balance"}
 "Create an agent" → {"action":"create_agent"}
+"hello" → {"action":"greet"}
+"hey there" → {"action":"greet"}
 "Transfer 50 lumens to GDEF..." → {"action":"send_xlm","destination":"GDEF...","amount":"50"}
 
 Return ONLY the JSON object, no markdown, no explanation.`;

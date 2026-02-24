@@ -149,7 +149,7 @@ function CreateAgentInner() {
   return (
     <HudShell>
       <main className="hud-grid flex min-w-0 flex-1 flex-col overflow-y-auto">
-        <div className="border-b border-border/40 bg-surface/50 px-6 py-4">
+        <div className="border-b border-border/40 bg-surface/50 px-3 py-4 sm:px-6">
           <div className="flex items-center gap-3">
             <Link
               href="/dashboard"
@@ -168,13 +168,13 @@ function CreateAgentInner() {
           </div>
         </div>
 
-        <div className="flex-1 p-6">
+        <div className="flex-1 p-3 sm:p-6">
           {!connected ? (
             <div className="border border-border/40 bg-surface/80 px-6 py-8 text-center">
               <div className="text-sm text-muted">&gt; Connect your wallet to create agents</div>
             </div>
           ) : (
-            <form onSubmit={handleCreate} className="max-w-xl space-y-6">
+            <form onSubmit={handleCreate} className="max-w-3xl space-y-6">
               {/* Agent Name */}
               <div>
                 <label className="mb-2 block text-[10px] tracking-widest text-muted">AGENT_NAME</label>
@@ -250,7 +250,7 @@ function CreateAgentInner() {
                         className="w-full border border-border/40 bg-surface/90 px-3 py-2 text-sm outline-none placeholder:text-muted/40 focus:border-accent/50 disabled:opacity-50"
                       />
                     </div>
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                       <div>
                         <span className="mb-1 block text-[9px] tracking-widest text-muted">
                           TARGET_RATIO (%)
@@ -333,7 +333,7 @@ function CreateAgentInner() {
                         className="w-full border border-border/40 bg-surface/90 px-3 py-2 text-sm outline-none placeholder:text-muted/40 focus:border-accent/50 disabled:opacity-50"
                       />
                     </div>
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                       <div>
                         <span className="mb-1 block text-[9px] tracking-widest text-muted">AMOUNT_XLM</span>
                         <input
@@ -393,7 +393,7 @@ function CreateAgentInner() {
                         className="w-full border border-border/40 bg-surface/90 px-3 py-2 text-sm outline-none placeholder:text-muted/40 focus:border-accent/50 disabled:opacity-50"
                       />
                     </div>
-                    <div className="grid grid-cols-4 gap-3">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
                       <div>
                         <span className="mb-1 block text-[9px] tracking-widest text-muted">UPPER_BOUND_USD</span>
                         <input
@@ -470,7 +470,7 @@ function CreateAgentInner() {
                         className="w-full border border-border/40 bg-surface/90 px-3 py-2 text-sm outline-none placeholder:text-muted/40 focus:border-accent/50 disabled:opacity-50"
                       />
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <div>
                         <span className="mb-1 block text-[9px] tracking-widest text-muted">AMOUNT_XLM</span>
                         <input
@@ -518,7 +518,7 @@ function CreateAgentInner() {
                         className="w-full border border-border/40 bg-surface/90 px-3 py-2 text-sm outline-none placeholder:text-muted/40 focus:border-accent/50 disabled:opacity-50"
                       />
                     </div>
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                       <div>
                         <span className="mb-1 block text-[9px] tracking-widest text-muted">MIN_BALANCE_XLM</span>
                         <input
@@ -644,7 +644,7 @@ function CreateAgentInner() {
       </main>
 
       {/* Right sidebar — deploy info */}
-      <aside className="flex w-[280px] shrink-0 flex-col border-l border-border/60 bg-surface">
+      <aside className="hidden w-[280px] shrink-0 lg:flex flex-col border-l border-border/60 bg-surface">
         <div className="border-b border-border/40 px-4 py-3">
           <div className="text-xs font-semibold tracking-widest">DEPLOY_STATUS</div>
         </div>

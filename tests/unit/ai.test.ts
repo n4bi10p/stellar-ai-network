@@ -28,6 +28,11 @@ describe("AI Command Validation", () => {
     expect(result.success).toBe(true);
   });
 
+  it("should validate greet action", () => {
+    const result = parsedCommandSchema.safeParse({ action: "greet" });
+    expect(result.success).toBe(true);
+  });
+
   it("should reject invalid action types", () => {
     const result = parsedCommandSchema.safeParse({ action: "delete_all" });
     expect(result.success).toBe(false);

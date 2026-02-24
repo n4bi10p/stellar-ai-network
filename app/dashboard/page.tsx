@@ -102,8 +102,8 @@ export default function DashboardPage() {
     <HudShell>
       <main className="hud-grid flex min-w-0 flex-1 flex-col overflow-y-auto">
         {/* Header */}
-        <div className="border-b border-border/40 bg-surface/50 px-6 py-4">
-          <div className="flex items-center justify-between">
+        <div className="border-b border-border/40 bg-surface/50 px-3 py-4 sm:px-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <div className="text-xs font-semibold tracking-widest">
                 DASHBOARD // AGENT_OVERVIEW
@@ -112,7 +112,7 @@ export default function DashboardPage() {
                 &gt; Manage and monitor your deployed agents
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={() => setShowTemplates(!showTemplates)}
                 className="flex items-center gap-1.5 rounded border border-border/40 px-3 py-1.5 text-[11px] tracking-wider text-muted transition-colors hover:text-foreground"
@@ -139,14 +139,14 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="flex-1 p-6">
+        <div className="flex-1 p-3 sm:p-6">
           {/* Template Browser */}
           {showTemplates && (
             <div className="mb-6">
                 <div className="mb-3 text-[10px] tracking-widest text-muted">
                   {"// AGENT_TEMPLATES"}
                 </div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {AGENT_TEMPLATES.map((t) => (
                   <Link
                     key={t.id}
@@ -170,7 +170,7 @@ export default function DashboardPage() {
           )}
 
           {/* Stats row */}
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <div className="border border-border/40 bg-surface/80 px-4 py-3">
               <div className="text-[10px] tracking-wider text-muted">TOTAL_AGENTS</div>
               <div className="mt-1 text-xl font-bold">{totalAgents}</div>
@@ -329,7 +329,7 @@ export default function DashboardPage() {
       </main>
 
       {/* Right sidebar — analytics */}
-      <aside className="flex w-[280px] shrink-0 flex-col border-l border-border/60 bg-surface">
+      <aside className="hidden w-[280px] shrink-0 lg:flex flex-col border-l border-border/60 bg-surface">
         <div className="border-b border-border/40 px-4 py-3">
           <div className="text-xs font-semibold tracking-widest">ANALYTICS</div>
         </div>

@@ -49,6 +49,15 @@
 
 ---
 
+## CI/CD
+
+- GitHub Actions workflow: `.github/workflows/ci.yml`
+- Runs on every push and pull request
+- Web checks: `npm ci` → `npm run lint` → `npm test` → `npm run build -- --webpack`
+- Contract checks: `cargo test --manifest-path contracts/agent/Cargo.toml`
+
+---
+
 ## Demo Video
 
 > 🎬 **Demo video:** 

@@ -25,7 +25,7 @@ export const sendTransactionSchema = z.object({
 
 // AI parsed command
 export const parsedCommandSchema = z.object({
-  action: z.enum(["send_xlm", "check_balance", "create_agent"]),
+  action: z.enum(["send_xlm", "check_balance", "create_agent", "greet"]),
   destination: stellarAddressSchema.optional(),
   amount: xlmAmountSchema.optional(),
 });
