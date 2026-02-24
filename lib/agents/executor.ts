@@ -7,12 +7,15 @@ import {
   type StoredAgent,
 } from "@/lib/store/agents";
 import { decideStrategy, type StrategyContext } from "./strategies";
+import { signSorobanXdrWithSecret } from "@/lib/stellar/auto-sign";
+import { resolveExecutionMode } from "@/lib/agents/modes";
 
 export interface AgentExecutionResult {
   agentId: string;
   contractId: string;
   executed: boolean;
   reason?: string;
+  nextExecutionAt?: string | null;
   txHash?: string;
   error?: string;
 }
@@ -29,8 +32,9 @@ export interface AgentDueResult {
 export async function evaluateAgentDue(options: {
   agentId: string;
   now?: Date;
+  allowManualMode?: boolean;
 }): Promise<AgentDueResult> {
-  const { agentId, now } = options;
+  const { agentId, now, allowManualMode = true } = options;
   const agent = await getAgentById(agentId);
   if (!agent) {
     return {
@@ -42,13 +46,16 @@ export async function evaluateAgentDue(options: {
     };
   }
 
+  const mode = resolveExecutionMode(agent);
   const autoEnabled = agent.autoExecuteEnabled ?? true;
-  if (!autoEnabled) {
+  if (!autoEnabled || (!allowManualMode && mode === "manual")) {
     return {
       agentId,
       contractId: agent.contractId,
       due: false,
-      reason: "Auto-execution disabled",
+      reason: !allowManualMode && mode === "manual"
+        ? "Manual mode does not run on cron"
+        : "Auto-execution disabled",
       nextExecutionAt: agent.nextExecutionAt ?? null,
     };
   }
@@ -80,8 +87,9 @@ export async function executeAgentOnce(options: {
   sourceAddress: string;
   /** When true, submit to Soroban RPC; when false, only build XDR. */
   submit?: boolean;
+  signWithSecretKey?: string;
 }): Promise<AgentExecutionResult & { xdr?: string }> {
-  const { agentId, sourceAddress, submit = true } = options;
+  const { agentId, sourceAddress, submit = true, signWithSecretKey } = options;
   const agent = await getAgentById(agentId);
   if (!agent) {
     return {
@@ -120,6 +128,7 @@ export async function executeAgentOnce(options: {
       contractId: agent.contractId,
       executed: false,
       reason: decision.reason,
+      nextExecutionAt: decision.nextExecutionAt ?? null,
     };
   }
 
@@ -148,13 +157,17 @@ export async function executeAgentOnce(options: {
       contractId: agent.contractId,
       executed: false,
       reason: decision.reason ?? "Built XDR only (submit=false)",
+      nextExecutionAt: decision.nextExecutionAt ?? null,
       xdr,
     };
   }
 
   // Submit via Soroban RPC
   try {
-    const result = await submitSorobanTx(xdr);
+    const signedXdr = signWithSecretKey
+      ? signSorobanXdrWithSecret({ xdr, secretKey: signWithSecretKey })
+      : xdr;
+    const result = await submitSorobanTx(signedXdr);
     const nowIso = new Date().toISOString();
     await recordAgentExecution(agentId, {
       lastExecutionAt: nowIso,
@@ -168,6 +181,7 @@ export async function executeAgentOnce(options: {
       contractId: agent.contractId,
       executed: success,
       reason: decision.reason,
+      nextExecutionAt: decision.nextExecutionAt ?? null,
       txHash: result.hash,
       error: success ? undefined : "Execution failed on-chain",
     };
@@ -178,9 +192,32 @@ export async function executeAgentOnce(options: {
       contractId: agent.contractId,
       executed: false,
       reason: decision.reason,
+      nextExecutionAt: decision.nextExecutionAt ?? null,
       error: message,
     };
   }
+}
+
+export async function executeAgentWithSecret(options: {
+  agentId: string;
+  secretKey: string;
+}): Promise<AgentExecutionResult> {
+  const agent = await getAgentById(options.agentId);
+  if (!agent) {
+    return {
+      agentId: options.agentId,
+      contractId: "",
+      executed: false,
+      error: "Agent not found",
+    };
+  }
+
+  return executeAgentOnce({
+    agentId: options.agentId,
+    sourceAddress: agent.owner,
+    submit: true,
+    signWithSecretKey: options.secretKey,
+  });
 }
 
 /** Execute all auto-executable agents for a given owner address. */

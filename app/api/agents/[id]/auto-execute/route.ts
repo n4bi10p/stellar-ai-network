@@ -57,10 +57,13 @@ export async function POST(
     const result = await executeAgentOnce({
       agentId: agent.id,
       sourceAddress,
-      submit: true,
+      submit: false,
     });
 
-    return NextResponse.json(result);
+    return NextResponse.json({
+      ...result,
+      agentStoreId: agent.id,
+    });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[API agents/[id]/auto-execute] Error:", msg);

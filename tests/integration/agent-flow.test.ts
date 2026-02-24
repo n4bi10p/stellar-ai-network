@@ -7,8 +7,8 @@ import { parsedCommandSchema } from "@/lib/utils/validation";
 import { getErrorMessage } from "@/lib/utils/errors";
 
 describe("Agent Templates", () => {
-  it("should have exactly 3 templates", () => {
-    expect(AGENT_TEMPLATES).toHaveLength(3);
+  it("should have exactly 5 templates", () => {
+    expect(AGENT_TEMPLATES).toHaveLength(5);
   });
 
   it("each template should have required fields", () => {

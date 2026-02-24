@@ -5,14 +5,14 @@ echo "════════════════════════�
 echo " Deploying Stellar AI Agent to testnet"
 echo "═══════════════════════════════════════"
 
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../agent"
 
 # Build first
 stellar contract build
 
 # Deploy to testnet using the default identity
 CONTRACT_ID=$(stellar contract deploy \
-  --wasm target/wasm32-unknown-unknown/release/stellar_ai_agent.wasm \
+  --wasm target/wasm32v1-none/release/stellar_ai_agent.wasm \
   --source default \
   --network testnet)
 

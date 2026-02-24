@@ -1,0 +1,18 @@
+{
+  "due": {
+    "2026-02-24-13": [
+      {
+        "eventId": "2026-02-24-13:agent-1",
+        "agentId": "agent-1",
+        "contractId": "C123",
+        "owner": "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF",
+        "dueAt": "2026-02-24T13:00:00Z",
+        "executionMode": "assisted_auto"
+      }
+    ],
+    "2026-02-24-11": []
+  },
+  "idem": {
+    "notify:evt-1": "2026-02-24T12:39:54.002Z"
+  }
+}

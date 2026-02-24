@@ -42,6 +42,7 @@ interface ReminderPrefs {
   discordWebhookUrl?: string;
   digestMode?: "instant" | "daily";
 }
+type ExecutionMode = "manual" | "assisted_auto" | "full_auto";
 
 export default function AgentDetailPage() {
   const params = useParams();
@@ -74,6 +75,15 @@ export default function AgentDetailPage() {
   const [remindersSaving, setRemindersSaving] = useState(false);
   const [remindersError, setRemindersError] = useState("");
   const [remindersSaved, setRemindersSaved] = useState(false);
+  const [executionMode, setExecutionMode] = useState<ExecutionMode>("manual");
+  const [modeSaving, setModeSaving] = useState(false);
+  const [modeError, setModeError] = useState("");
+  const [modeSaved, setModeSaved] = useState(false);
+  const [fullAutoConsented, setFullAutoConsented] = useState(false);
+  const [secretKeyInput, setSecretKeyInput] = useState("");
+  const [keySaving, setKeySaving] = useState(false);
+  const [keyError, setKeyError] = useState("");
+  const [keySaved, setKeySaved] = useState(false);
 
   // Fetch on-chain config
   const fetchConfig = useCallback(async () => {
@@ -107,13 +117,22 @@ export default function AgentDetailPage() {
       const res = await fetch(`/api/agents?owner=${address}`);
       if (!res.ok) throw new Error("Failed to load agent metadata");
       const { agents } = await res.json();
-      const matching = (agents as Array<{ id: string; contractId: string; createdAt: string; reminders?: ReminderPrefs }>)
+      const matching = (agents as Array<{
+        id: string;
+        contractId: string;
+        createdAt: string;
+        reminders?: ReminderPrefs;
+        executionMode?: ExecutionMode;
+        fullAuto?: { consentAcceptedAt?: string | null; encryptedSecret?: unknown | null };
+      }>)
         .filter((a) => a.contractId === contractId)
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       const latest = matching[0];
       if (latest) {
         setAgentStoreId(latest.id);
         setReminders(latest.reminders ?? {});
+        setExecutionMode(latest.executionMode ?? "manual");
+        setFullAutoConsented(Boolean(latest.fullAuto?.consentAcceptedAt));
       }
     } catch (err) {
       console.error("Failed to load reminders:", err);
@@ -209,9 +228,38 @@ export default function AgentDetailPage() {
 
       setAutoExecReason(data.reason || "");
 
-      if (data.executed && data.txHash) {
-        setAutoExecHash(data.txHash as string);
-        // Refresh on-chain executions count
+      if (data.xdr) {
+        const signedXdr = await signTx(data.xdr as string);
+        const submitRes = await fetch("/api/stellar/submit-soroban", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ signedXDR: signedXdr }),
+        });
+
+        if (!submitRes.ok) {
+          const submitErr = await submitRes.json();
+          throw new Error(submitErr.error || "Auto execution submit failed");
+        }
+
+        const submitData = await submitRes.json();
+        if (submitData.status !== "SUCCESS" && submitData.status !== "PENDING") {
+          throw new Error("Auto execution failed on-chain");
+        }
+
+        setAutoExecHash(submitData.hash as string);
+
+        if (data.agentStoreId) {
+          fetch(`/api/agents/${data.agentStoreId as string}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              txHash: submitData.hash,
+              recordExecution: true,
+              nextExecutionAt: data.nextExecutionAt ?? null,
+            }),
+          }).catch(() => {});
+        }
+
         await fetchConfig();
       }
     } catch (err) {
@@ -293,6 +341,64 @@ export default function AgentDetailPage() {
       setRemindersError(getErrorMessage(err));
     } finally {
       setRemindersSaving(false);
+    }
+  }
+
+  async function handleSaveExecutionMode() {
+    if (!agentStoreId) return;
+    setModeSaving(true);
+    setModeError("");
+    setModeSaved(false);
+    try {
+      const res = await fetch(`/api/agents/${agentStoreId}/execution-mode`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: executionMode }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to save execution mode");
+      setModeSaved(true);
+    } catch (err) {
+      setModeError(getErrorMessage(err));
+    } finally {
+      setModeSaving(false);
+    }
+  }
+
+  async function handleSaveConsentAndKey() {
+    if (!agentStoreId) return;
+    setKeySaving(true);
+    setKeyError("");
+    setKeySaved(false);
+    try {
+      const consentRes = await fetch(`/api/agents/${agentStoreId}/key-consent`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accepted: fullAutoConsented, policyVersion: "v1" }),
+      });
+      const consentData = await consentRes.json();
+      if (!consentRes.ok) throw new Error(consentData.error || "Failed to save consent");
+
+      if (fullAutoConsented && secretKeyInput.trim()) {
+        const keyRes = await fetch(`/api/agents/${agentStoreId}/key-store`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ secretKey: secretKeyInput.trim() }),
+        });
+        const keyData = await keyRes.json();
+        if (!keyRes.ok) throw new Error(keyData.error || "Failed to store key");
+      }
+
+      if (!fullAutoConsented) {
+        await fetch(`/api/agents/${agentStoreId}/key-store`, { method: "DELETE" });
+      }
+
+      setKeySaved(true);
+      setSecretKeyInput("");
+    } catch (err) {
+      setKeyError(getErrorMessage(err));
+    } finally {
+      setKeySaving(false);
     }
   }
 
@@ -554,6 +660,104 @@ export default function AgentDetailPage() {
                   </div>
                 )}
               </div>
+
+              {/* EXECUTION MODE */}
+              <div className="mt-6">
+                <div className="mb-3 text-[10px] tracking-widest text-muted">
+                  {"// EXECUTION_MODE"}
+                </div>
+                {!connected ? (
+                  <div className="border border-border/40 bg-surface/80 px-4 py-4 text-center text-[10px] text-muted">
+                    &gt; Connect wallet to configure execution mode
+                  </div>
+                ) : !agentStoreId ? (
+                  <div className="border border-border/40 bg-surface/80 px-4 py-4 text-[10px] text-muted">
+                    &gt; No stored agent record found for this contract.
+                  </div>
+                ) : (
+                  <div className="space-y-3 border border-border/40 bg-surface/80 px-4 py-4 text-[10px] tracking-wider">
+                    <div className="grid grid-cols-3 gap-2">
+                      {(["manual", "assisted_auto", "full_auto"] as const).map((mode) => (
+                        <label key={mode} className="flex items-center gap-2 border border-border/30 px-2 py-1.5">
+                          <input
+                            type="radio"
+                            name="executionMode"
+                            checked={executionMode === mode}
+                            onChange={() => setExecutionMode(mode)}
+                          />
+                          {mode.toUpperCase()}
+                        </label>
+                      ))}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleSaveExecutionMode}
+                      disabled={modeSaving}
+                      className="flex w-full items-center justify-center gap-2 border border-accent/50 bg-accent/10 py-2 text-[11px] font-semibold tracking-widest text-accent transition-colors hover:bg-accent/20 disabled:opacity-30"
+                    >
+                      {modeSaving ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          SAVING...
+                        </>
+                      ) : (
+                        "SAVE_EXECUTION_MODE"
+                      )}
+                    </button>
+
+                    {modeSaved && <div className="text-[10px] text-accent">&gt; Execution mode saved</div>}
+                    {modeError && <div className="text-[10px] text-red-400">&gt; {modeError}</div>}
+                  </div>
+                )}
+              </div>
+
+              {/* FULL AUTO KEY CONSENT */}
+              {executionMode === "full_auto" && (
+                <div className="mt-6">
+                  <div className="mb-3 text-[10px] tracking-widest text-muted">
+                    {"// FULL_AUTO_KEY_VAULT"}
+                  </div>
+                  <div className="space-y-3 border border-border/40 bg-surface/80 px-4 py-4 text-[10px] tracking-wider">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={fullAutoConsented}
+                        onChange={(e) => setFullAutoConsented(e.target.checked)}
+                      />
+                      I_ACCEPT_FULL_AUTO_RISK
+                    </label>
+                    <div>
+                      <div className="mb-1 text-[9px] tracking-widest text-muted">SECRET_KEY (OPTIONAL UPDATE)</div>
+                      <input
+                        type="password"
+                        value={secretKeyInput}
+                        onChange={(e) => setSecretKeyInput(e.target.value)}
+                        placeholder="S..."
+                        className="w-full border border-border/40 bg-surface/90 px-3 py-2 text-xs outline-none placeholder:text-muted/40 focus:border-accent/50"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleSaveConsentAndKey}
+                      disabled={keySaving}
+                      className="flex w-full items-center justify-center gap-2 border border-accent/50 bg-accent/10 py-2 text-[11px] font-semibold tracking-widest text-accent transition-colors hover:bg-accent/20 disabled:opacity-30"
+                    >
+                      {keySaving ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          SAVING...
+                        </>
+                      ) : (
+                        "SAVE_CONSENT_AND_KEY"
+                      )}
+                    </button>
+
+                    {keySaved && <div className="text-[10px] text-accent">&gt; Full-auto key settings saved</div>}
+                    {keyError && <div className="text-[10px] text-red-400">&gt; {keyError}</div>}
+                  </div>
+                </div>
+              )}
 
               {/* REMINDERS */}
               <div className="mt-6">

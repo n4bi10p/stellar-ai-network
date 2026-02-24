@@ -314,6 +314,258 @@ function CreateAgentInner() {
                 </div>
               )}
 
+              {strategy === "recurring_payment" && (
+                <div>
+                  <label className="mb-2 block text-[10px] tracking-widest text-muted">
+                    RECURRING_PAYMENT_CONFIG
+                  </label>
+                  <div className="space-y-3 border border-border/40 bg-surface/80 px-4 py-3">
+                    <div>
+                      <span className="mb-1 block text-[9px] tracking-widest text-muted">
+                        RECIPIENT_ADDRESS
+                      </span>
+                      <input
+                        type="text"
+                        value={(strategyConfig.recipient as string) ?? ""}
+                        onChange={(e) => setStrategyConfig((prev) => ({ ...prev, recipient: e.target.value }))}
+                        placeholder="G..."
+                        disabled={isWorking || txStatus === "success"}
+                        className="w-full border border-border/40 bg-surface/90 px-3 py-2 text-sm outline-none placeholder:text-muted/40 focus:border-accent/50 disabled:opacity-50"
+                      />
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <span className="mb-1 block text-[9px] tracking-widest text-muted">AMOUNT_XLM</span>
+                        <input
+                          type="number"
+                          value={(strategyConfig.amount as number | undefined) ?? 10}
+                          onChange={(e) => setStrategyConfig((prev) => ({ ...prev, amount: Number(e.target.value || 0) }))}
+                          disabled={isWorking || txStatus === "success"}
+                          className="w-full border border-border/40 bg-surface/90 px-3 py-2 text-sm outline-none focus:border-accent/50 disabled:opacity-50"
+                        />
+                      </div>
+                      <div>
+                        <span className="mb-1 block text-[9px] tracking-widest text-muted">INTERVAL_SECONDS</span>
+                        <input
+                          type="number"
+                          value={(strategyConfig.intervalSeconds as number | undefined) ?? 86400}
+                          onChange={(e) =>
+                            setStrategyConfig((prev) => ({ ...prev, intervalSeconds: Number(e.target.value || 0) }))
+                          }
+                          disabled={isWorking || txStatus === "success"}
+                          className="w-full border border-border/40 bg-surface/90 px-3 py-2 text-sm outline-none focus:border-accent/50 disabled:opacity-50"
+                        />
+                      </div>
+                      <div>
+                        <span className="mb-1 block text-[9px] tracking-widest text-muted">MAX_EXECUTIONS</span>
+                        <input
+                          type="number"
+                          value={(strategyConfig.maxExecutions as number | undefined) ?? 30}
+                          onChange={(e) =>
+                            setStrategyConfig((prev) => ({ ...prev, maxExecutions: Number(e.target.value || 0) }))
+                          }
+                          disabled={isWorking || txStatus === "success"}
+                          className="w-full border border-border/40 bg-surface/90 px-3 py-2 text-sm outline-none focus:border-accent/50 disabled:opacity-50"
+                        />
+                      </div>
+                    </div>
+                    <div className="text-[9px] tracking-wider text-muted">
+                      Amount is sent every interval in seconds (e.g. `3600` = 1 hour, `86400` = 1 day).
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {strategy === "price_alert" && (
+                <div>
+                  <label className="mb-2 block text-[10px] tracking-widest text-muted">
+                    PRICE_ALERT_CONFIG
+                  </label>
+                  <div className="space-y-3 border border-border/40 bg-surface/80 px-4 py-3">
+                    <div>
+                      <span className="mb-1 block text-[9px] tracking-widest text-muted">RECIPIENT_ADDRESS</span>
+                      <input
+                        type="text"
+                        value={(strategyConfig.recipient as string) ?? ""}
+                        onChange={(e) => setStrategyConfig((prev) => ({ ...prev, recipient: e.target.value }))}
+                        placeholder="G..."
+                        disabled={isWorking || txStatus === "success"}
+                        className="w-full border border-border/40 bg-surface/90 px-3 py-2 text-sm outline-none placeholder:text-muted/40 focus:border-accent/50 disabled:opacity-50"
+                      />
+                    </div>
+                    <div className="grid grid-cols-4 gap-3">
+                      <div>
+                        <span className="mb-1 block text-[9px] tracking-widest text-muted">UPPER_BOUND_USD</span>
+                        <input
+                          type="number"
+                          value={(strategyConfig.upperBound as number | undefined) ?? 0.5}
+                          onChange={(e) =>
+                            setStrategyConfig((prev) => ({ ...prev, upperBound: Number(e.target.value || 0) }))
+                          }
+                          disabled={isWorking || txStatus === "success"}
+                          className="w-full border border-border/40 bg-surface/90 px-3 py-2 text-sm outline-none focus:border-accent/50 disabled:opacity-50"
+                        />
+                      </div>
+                      <div>
+                        <span className="mb-1 block text-[9px] tracking-widest text-muted">LOWER_BOUND_USD</span>
+                        <input
+                          type="number"
+                          value={(strategyConfig.lowerBound as number | undefined) ?? 0.05}
+                          onChange={(e) =>
+                            setStrategyConfig((prev) => ({ ...prev, lowerBound: Number(e.target.value || 0) }))
+                          }
+                          disabled={isWorking || txStatus === "success"}
+                          className="w-full border border-border/40 bg-surface/90 px-3 py-2 text-sm outline-none focus:border-accent/50 disabled:opacity-50"
+                        />
+                      </div>
+                      <div>
+                        <span className="mb-1 block text-[9px] tracking-widest text-muted">ALERT_AMOUNT_XLM</span>
+                        <input
+                          type="number"
+                          value={(strategyConfig.alertAmount as number | undefined) ?? 100}
+                          onChange={(e) =>
+                            setStrategyConfig((prev) => ({ ...prev, alertAmount: Number(e.target.value || 0) }))
+                          }
+                          disabled={isWorking || txStatus === "success"}
+                          className="w-full border border-border/40 bg-surface/90 px-3 py-2 text-sm outline-none focus:border-accent/50 disabled:opacity-50"
+                        />
+                      </div>
+                      <div>
+                        <span className="mb-1 block text-[9px] tracking-widest text-muted">CHECK_INTERVAL_SECONDS</span>
+                        <input
+                          type="number"
+                          value={(strategyConfig.checkIntervalSeconds as number | undefined) ?? 300}
+                          onChange={(e) =>
+                            setStrategyConfig((prev) => ({
+                              ...prev,
+                              checkIntervalSeconds: Number(e.target.value || 0),
+                            }))
+                          }
+                          disabled={isWorking || txStatus === "success"}
+                          className="w-full border border-border/40 bg-surface/90 px-3 py-2 text-sm outline-none focus:border-accent/50 disabled:opacity-50"
+                        />
+                      </div>
+                    </div>
+                    <div className="text-[9px] tracking-wider text-muted">
+                      Agent checks XLM/USD every interval and executes when price crosses bounds.
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {strategy === "dca_bot" && (
+                <div>
+                  <label className="mb-2 block text-[10px] tracking-widest text-muted">
+                    DCA_BOT_CONFIG
+                  </label>
+                  <div className="space-y-3 border border-border/40 bg-surface/80 px-4 py-3">
+                    <div>
+                      <span className="mb-1 block text-[9px] tracking-widest text-muted">RECIPIENT_ADDRESS</span>
+                      <input
+                        type="text"
+                        value={(strategyConfig.recipient as string) ?? ""}
+                        onChange={(e) => setStrategyConfig((prev) => ({ ...prev, recipient: e.target.value }))}
+                        placeholder="G..."
+                        disabled={isWorking || txStatus === "success"}
+                        className="w-full border border-border/40 bg-surface/90 px-3 py-2 text-sm outline-none placeholder:text-muted/40 focus:border-accent/50 disabled:opacity-50"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <span className="mb-1 block text-[9px] tracking-widest text-muted">AMOUNT_XLM</span>
+                        <input
+                          type="number"
+                          value={(strategyConfig.amount as number | undefined) ?? 5}
+                          onChange={(e) => setStrategyConfig((prev) => ({ ...prev, amount: Number(e.target.value || 0) }))}
+                          disabled={isWorking || txStatus === "success"}
+                          className="w-full border border-border/40 bg-surface/90 px-3 py-2 text-sm outline-none focus:border-accent/50 disabled:opacity-50"
+                        />
+                      </div>
+                      <div>
+                        <span className="mb-1 block text-[9px] tracking-widest text-muted">INTERVAL_SECONDS</span>
+                        <input
+                          type="number"
+                          value={(strategyConfig.intervalSeconds as number | undefined) ?? 86400}
+                          onChange={(e) =>
+                            setStrategyConfig((prev) => ({ ...prev, intervalSeconds: Number(e.target.value || 0) }))
+                          }
+                          disabled={isWorking || txStatus === "success"}
+                          className="w-full border border-border/40 bg-surface/90 px-3 py-2 text-sm outline-none focus:border-accent/50 disabled:opacity-50"
+                        />
+                      </div>
+                    </div>
+                    <div className="text-[9px] tracking-wider text-muted">
+                      Fixed amount transfer every interval (in seconds).
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {strategy === "savings_sweep" && (
+                <div>
+                  <label className="mb-2 block text-[10px] tracking-widest text-muted">
+                    SAVINGS_SWEEP_CONFIG
+                  </label>
+                  <div className="space-y-3 border border-border/40 bg-surface/80 px-4 py-3">
+                    <div>
+                      <span className="mb-1 block text-[9px] tracking-widest text-muted">VAULT_RECIPIENT_ADDRESS</span>
+                      <input
+                        type="text"
+                        value={(strategyConfig.recipient as string) ?? ""}
+                        onChange={(e) => setStrategyConfig((prev) => ({ ...prev, recipient: e.target.value }))}
+                        placeholder="G..."
+                        disabled={isWorking || txStatus === "success"}
+                        className="w-full border border-border/40 bg-surface/90 px-3 py-2 text-sm outline-none placeholder:text-muted/40 focus:border-accent/50 disabled:opacity-50"
+                      />
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <span className="mb-1 block text-[9px] tracking-widest text-muted">MIN_BALANCE_XLM</span>
+                        <input
+                          type="number"
+                          value={(strategyConfig.minBalanceXlm as number | undefined) ?? 100}
+                          onChange={(e) =>
+                            setStrategyConfig((prev) => ({ ...prev, minBalanceXlm: Number(e.target.value || 0) }))
+                          }
+                          disabled={isWorking || txStatus === "success"}
+                          className="w-full border border-border/40 bg-surface/90 px-3 py-2 text-sm outline-none focus:border-accent/50 disabled:opacity-50"
+                        />
+                      </div>
+                      <div>
+                        <span className="mb-1 block text-[9px] tracking-widest text-muted">SWEEP_THRESHOLD_XLM</span>
+                        <input
+                          type="number"
+                          value={(strategyConfig.sweepThresholdXlm as number | undefined) ?? 10}
+                          onChange={(e) =>
+                            setStrategyConfig((prev) => ({
+                              ...prev,
+                              sweepThresholdXlm: Number(e.target.value || 0),
+                            }))
+                          }
+                          disabled={isWorking || txStatus === "success"}
+                          className="w-full border border-border/40 bg-surface/90 px-3 py-2 text-sm outline-none focus:border-accent/50 disabled:opacity-50"
+                        />
+                      </div>
+                      <div>
+                        <span className="mb-1 block text-[9px] tracking-widest text-muted">INTERVAL_SECONDS</span>
+                        <input
+                          type="number"
+                          value={(strategyConfig.intervalSeconds as number | undefined) ?? 86400}
+                          onChange={(e) =>
+                            setStrategyConfig((prev) => ({ ...prev, intervalSeconds: Number(e.target.value || 0) }))
+                          }
+                          disabled={isWorking || txStatus === "success"}
+                          className="w-full border border-border/40 bg-surface/90 px-3 py-2 text-sm outline-none focus:border-accent/50 disabled:opacity-50"
+                        />
+                      </div>
+                    </div>
+                    <div className="text-[9px] tracking-wider text-muted">
+                      Keeps `MIN_BALANCE_XLM` in wallet and sweeps excess above threshold at each interval.
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Deploy Button */}
               {txStatus !== "success" && (
                 <button

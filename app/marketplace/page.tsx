@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Layers, Zap, Clock, TrendingUp } from "lucide-react";
+import { ArrowRight, Layers, Zap, Clock, TrendingUp, Repeat, PiggyBank } from "lucide-react";
 import { HudShell } from "@/components/layout/HudShell";
 import { AGENT_TEMPLATES } from "@/lib/agents/templates";
 
@@ -9,6 +9,8 @@ const strategyIcons: Record<string, React.ReactNode> = {
   auto_rebalance: <Layers className="h-5 w-5" />,
   recurring_payment: <Clock className="h-5 w-5" />,
   price_alert: <TrendingUp className="h-5 w-5" />,
+  dca_bot: <Repeat className="h-5 w-5" />,
+  savings_sweep: <PiggyBank className="h-5 w-5" />,
 };
 
 export default function MarketplacePage() {
@@ -112,43 +114,6 @@ export default function MarketplacePage() {
             ))}
           </div>
 
-          {/* Coming soon section */}
-          <div className="mt-8">
-            <div className="mb-3 text-[10px] tracking-widest text-muted">
-              {"// COMING_SOON"}
-            </div>
-            <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
-              {[
-                {
-                  name: "DCA Bot",
-                  desc: "Dollar-cost average into any Stellar asset",
-                },
-                {
-                  name: "Liquidity Provider",
-                  desc: "Auto-provide liquidity to DEX pools",
-                },
-                {
-                  name: "NFT Watcher",
-                  desc: "Monitor and auto-bid on Stellar NFTs",
-                },
-              ].map((item) => (
-                <div
-                  key={item.name}
-                  className="border border-border/40 bg-surface/40 px-4 py-3 opacity-60"
-                >
-                  <div className="text-xs font-semibold tracking-wider text-muted">
-                    {item.name}
-                  </div>
-                  <div className="mt-1 text-[10px] tracking-wider text-muted/60">
-                    {item.desc}
-                  </div>
-                  <div className="mt-2 text-[9px] tracking-widest text-muted/40">
-                    COMING_SOON
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
       </main>
 

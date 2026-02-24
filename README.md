@@ -26,15 +26,17 @@
 
 ## Test Results
 
-**50 Vitest tests** + **5 Rust contract tests** = **55 total tests passing**
+**55 Vitest tests** + **5 Rust contract tests** = **60 total tests passing**
 
 ```
+ ✓ tests/unit/security.test.ts (2 tests) 6ms
+ ✓ tests/unit/scheduler.test.ts (3 tests) 6ms
  ✓ tests/unit/ai.test.ts (13 tests) 10ms
  ✓ tests/integration/agent-flow.test.ts (10 tests) 9ms
  ✓ tests/unit/stellar.test.ts (27 tests) 23ms
 
- Test Files  3 passed (3)
-      Tests  50 passed (50)
+ Test Files  5 passed (5)
+      Tests  55 passed (55)
    Start at  16:04:52
    Duration  643ms
 ```
@@ -139,6 +141,17 @@ Stellar AI Agent Network is a platform where users interact with the Stellar blo
 | 5 | API Expansion — Agent CRUD routes (GET/POST + [id] GET/PATCH) | ✅ Done |
 | 6 | Template Pre-Fill — Create agents from templates via URL params | ✅ Done |
 
+### Level 4 — Green Belt ✅
+
+| # | Requirement | Status |
+|---|------------|--------|
+| 1 | Scheduler + cron routes (`due-check`, `notify-due`, `auto-execute`) | ✅ Done |
+| 2 | Reminder channels (in-app, email, telegram, discord) | ✅ Done |
+| 3 | Execution modes (`manual`, `assisted_auto`, `full_auto`) | ✅ Done |
+| 4 | Full-auto consent + encrypted key vault APIs | ✅ Done |
+| 5 | Template expansion to 5 (DCA Bot, Savings Sweep) | ✅ Done |
+| 6 | Security guardrails (caps, idempotency, retry/backoff, cron auth) | ✅ Done |
+
 ### Additional Features Built
 - AI-powered natural language command parsing (Gemini 2.5 Flash)
 - Terminal/HUD-style UI designed from Figma
@@ -215,7 +228,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 # ── Soroban Contract (already deployed) ──
 NEXT_PUBLIC_AGENT_CONTRACT_ID=CAGIKMTM5ZGZZLYDHFI3EOI6GTJX7ODAJN2PW4JXNMNXKOFD5FBTQJKB
 
-# ── Agent Store Backend (Phase 0) ──
+# ── Agent Store Backend ──
 # json | redis
 AGENT_STORE_BACKEND=json
 
@@ -223,6 +236,21 @@ AGENT_STORE_BACKEND=json
 UPSTASH_REDIS_REST_URL=
 UPSTASH_REDIS_REST_TOKEN=
 AGENTS_STORE_REDIS_KEY=agents:all
+
+# ── Cron + Automation (Level 4) ──
+CRON_SECRET=
+CRON_MAX_AGENTS_PER_RUN=25
+ENABLE_ASSISTED_AUTO=true
+ENABLE_FULL_AUTO=false
+
+# ── Reminder Providers (Level 4) ──
+RESEND_API_KEY=
+REMINDER_FROM_EMAIL=
+TELEGRAM_BOT_TOKEN=
+
+# ── Full-Auto Encryption Key (Level 4) ──
+# Base64-encoded 32-byte key for AES-256-GCM
+AUTO_SIGNING_MASTER_KEY=
 ```
 
 ### Run Development Server
@@ -243,7 +271,7 @@ npm start
 ### Run Tests
 
 ```bash
-# Run all Vitest tests (50 tests — unit + integration)
+# Run all Vitest tests (55 tests — unit + integration)
 npm test
 
 # Watch mode
@@ -270,10 +298,11 @@ UPSTASH_REDIS_REST_TOKEN=... \
 npm run migrate:agents:redis
 ```
 
-**Test coverage:** 55 total tests
+**Test coverage:** 60 total tests
 - **27** — Stellar utilities (formatting, validation, error handling)
 - **13** — AI parsing logic (command validation, JSON extraction)
 - **10** — Agent integration flow (templates, create→deploy pipeline, dashboard)
+- **5** — Level 4 security + scheduler state tests
 - **5** — Soroban contract (Rust: initialize, execute, toggle, edge cases)
 
 ### Smart Contract (Optional — already deployed)
@@ -310,9 +339,18 @@ stellar-ai-network/
 │       ├── ai/parse/route.ts         # Gemini AI command parsing
 │       ├── agents/
 │       │   ├── route.ts              # GET list + POST create agent
-│       │   ├── [id]/route.ts         # GET agent + PATCH update txHash
+│       │   ├── [id]/route.ts         # GET agent + PATCH update txHash/execution
+│       │   ├── [id]/execution-mode/route.ts # POST mode config
+│       │   ├── [id]/key-consent/route.ts    # POST consent for full-auto
+│       │   ├── [id]/key-store/route.ts      # POST/DELETE encrypted key storage
+│       │   ├── [id]/reminders/route.ts      # GET/POST reminder settings
 │       │   ├── execute/route.ts      # POST — execute agent action
 │       │   └── toggle/route.ts       # POST — toggle agent active state
+│       ├── agents/due/route.ts       # GET due agents for owner
+│       ├── cron/
+│       │   ├── due-check/route.ts    # Hourly due scan
+│       │   ├── notify-due/route.ts   # Reminder dispatcher
+│       │   └── auto-execute/route.ts # Full-auto execution (flagged)
 │       └── stellar/
 │           ├── balance/route.ts      # Fetch XLM balance
 │           ├── send/route.ts         # Build unsigned TX XDR
@@ -331,7 +369,9 @@ stellar-ai-network/
 │
 ├── lib/
 │   ├── agents/
-│   │   └── templates.ts              # 3 pre-built agent templates
+│   │   ├── templates.ts              # 5 pre-built agent templates
+│   │   ├── modes.ts                  # Execution mode helpers
+│   │   └── strategies/               # Strategy decision engines
 │   ├── hooks/
 │   │   ├── useWallet.ts              # Multi-wallet store (Zustand)
 │   │   ├── useAI.ts                  # AI command parsing hook
@@ -342,6 +382,18 @@ stellar-ai-network/
 │   │   └── types.ts                  # ChatMessage, TransactionResult, ParsedCommand
 │   ├── store/
 │   │   └── agents.ts                 # Server-side JSON file-based persistence
+│   ├── scheduler/
+│   │   ├── state.ts                  # Due windows + idempotency state
+│   │   ├── budget.ts                 # Per-run caps
+│   │   └── retry.ts                  # Retry/backoff helpers
+│   ├── reminders/
+│   │   ├── dispatcher.ts             # Channel fan-out
+│   │   ├── email.ts                  # Resend integration
+│   │   ├── telegram.ts               # Telegram bot integration
+│   │   └── discord.ts                # Discord webhook integration
+│   ├── security/
+│   │   ├── crypto.ts                 # AES-256-GCM encrypt/decrypt helpers
+│   │   └── key-vault.ts              # Consent + encrypted key lifecycle
 │   ├── wallets/
 │   │   ├── types.ts                  # WalletProvider interface
 │   │   ├── freighter.ts              # Freighter adapter
@@ -488,13 +540,15 @@ The AI agent also understands natural language variations like _"transfer 50 lum
 
 ## Agent Templates
 
-Three pre-built agent templates are available for one-click deployment:
+Five pre-built agent templates are available for one-click deployment:
 
 | Template | Strategy | Description | Defaults |
 |----------|----------|-------------|----------|
 | ⚖️ Auto-Rebalancer | `auto_rebalance` | Maintains target XLM allocations across accounts | 100 XLM |
 | 📅 Bill Scheduler | `recurring_payment` | Automates recurring XLM payments on schedule | 50 XLM |
 | 📈 Price Alert | `price_alert` | Monitors XLM price and executes trades at thresholds | 200 XLM |
+| 🧮 DCA Bot | `dca_bot` | Executes fixed-amount periodic transfers | 5 XLM / interval |
+| 🏦 Savings Sweep | `savings_sweep` | Sweeps excess XLM above reserve to vault wallet | Threshold-based |
 
 Templates can be selected from the dashboard template browser or the create page strategy selector.
 
@@ -507,7 +561,7 @@ Templates can be selected from the dashboard template browser or the create page
 | **1 — White Belt** | ✅ Complete | Wallet, AI commands, transactions |
 | **2 — Yellow Belt** | ✅ Complete | Multi-wallet, Soroban contract, contract integration |
 | **3 — Orange Belt** | ✅ Complete | Agent templates, dashboard, 55 tests |
-| 4 — Green Belt | 🔜 Next | Advanced agents, E2E tests |
+| **4 — Green Belt** | ✅ Complete | Scheduler, reminders, execution modes, key vault, 5 templates |
 | 5 — Blue Belt | ⏳ Planned | Database, multi-agent management |
 | 6 — Black Belt | ⏳ Planned | Analytics, leaderboard, mainnet |
 

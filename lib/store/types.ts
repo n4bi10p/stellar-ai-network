@@ -1,3 +1,7 @@
+import type { EncryptedSecretBlob } from "@/lib/security/crypto";
+
+export type ExecutionMode = "manual" | "assisted_auto" | "full_auto";
+
 export interface StoredAgent {
   id: string; // unique UUID
   contractId: string;
@@ -21,6 +25,8 @@ export interface StoredAgent {
 
   /** Auto-execution control (used later by cron in Phase 2) */
   autoExecuteEnabled?: boolean;
+  /** Level 4 execution mode control */
+  executionMode?: ExecutionMode;
 
   /** Reminder preferences (Phase 1) */
   reminders?: {
@@ -40,4 +46,13 @@ export interface StoredAgent {
   lastExecutionAt?: string | null; // ISO 8601
   nextExecutionAt?: string | null; // ISO 8601
   executionCount?: number; // auto executions performed
+
+  /** Full-auto key lifecycle (Level 4) */
+  fullAuto?: {
+    consentAcceptedAt?: string | null;
+    consentVersion?: string | null;
+    encryptedSecret?: EncryptedSecretBlob | null;
+    keyStoredAt?: string | null;
+    keyRevokedAt?: string | null;
+  };
 }

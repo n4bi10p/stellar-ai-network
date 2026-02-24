@@ -49,6 +49,18 @@ export async function POST(request: NextRequest) {
       templateId: templateId ?? null,
       txHash: null,
       strategyConfig: (strategyConfig as Record<string, unknown> | undefined) ?? undefined,
+      executionMode: "manual",
+      reminders: {
+        channels: { inApp: true, email: false, telegram: false, discord: false },
+        digestMode: "instant",
+      },
+      fullAuto: {
+        consentAcceptedAt: null,
+        consentVersion: null,
+        encryptedSecret: null,
+        keyStoredAt: null,
+        keyRevokedAt: null,
+      },
     });
 
     return NextResponse.json({
