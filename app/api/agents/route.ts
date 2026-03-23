@@ -4,6 +4,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { buildInitialize } from "@/lib/stellar/contracts";
 import { readAgents, addAgent, getAgentsByOwner } from "@/lib/store/agents";
+import {
+  supportedAgentStrategySchema,
+  validateStrategyConfig,
+} from "@/lib/utils/validation";
 
 export async function GET(request: NextRequest) {
   try {
@@ -29,6 +33,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const parsedStrategy = supportedAgentStrategySchema.safeParse(strategy);
+    if (!parsedStrategy.success) {
+      return NextResponse.json(
+        { error: "Unsupported strategy" },
+        { status: 400 }
+      );
+    }
+
+    const validatedConfig = validateStrategyConfig(
+      parsedStrategy.data,
+      (strategyConfig as Record<string, unknown> | undefined) ?? {}
+    );
+    if (!validatedConfig.success) {
+      return NextResponse.json(
+        {
+          error:
+            validatedConfig.error.issues[0]?.message ??
+            "Invalid strategy configuration",
+        },
+        { status: 400 }
+      );
+    }
+
     const contractId = process.env.NEXT_PUBLIC_AGENT_CONTRACT_ID;
     if (!contractId) {
       return NextResponse.json(
@@ -38,17 +65,23 @@ export async function POST(request: NextRequest) {
     }
 
     // Build the unsigned transaction XDR for initialize()
-    const xdr = await buildInitialize(contractId, owner, name, strategy, owner);
+    const xdr = await buildInitialize(
+      contractId,
+      owner,
+      name,
+      parsedStrategy.data,
+      owner
+    );
 
     // Persist agent metadata in server-side store (include optional strategyConfig)
     const stored = await addAgent({
       contractId,
       owner,
       name,
-      strategy,
+      strategy: parsedStrategy.data,
       templateId: templateId ?? null,
       txHash: null,
-      strategyConfig: (strategyConfig as Record<string, unknown> | undefined) ?? undefined,
+      strategyConfig: validatedConfig.data,
       executionMode: "manual",
       reminders: {
         channels: { inApp: true, email: false, telegram: false, discord: false },

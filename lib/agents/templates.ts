@@ -20,8 +20,10 @@ export const AGENT_TEMPLATES: AgentTemplate[] = [
       "Maintains a target asset ratio by automatically selling over-weight assets and buying under-weight assets. Runs on a configurable interval.",
     strategy: "auto_rebalance",
     defaults: {
+      recipient: "",
       targetRatio: 50,
       checkInterval: 3600,
+      thresholdXlm: 1,
       slippage: 1,
     },
     icon: "⚖️",
@@ -87,4 +89,8 @@ export const AGENT_TEMPLATES: AgentTemplate[] = [
 
 export function getTemplate(id: string): AgentTemplate | undefined {
   return AGENT_TEMPLATES.find((t) => t.id === id);
+}
+
+export function getTemplateByStrategy(strategy: string): AgentTemplate | undefined {
+  return AGENT_TEMPLATES.find((t) => t.strategy === strategy);
 }

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getAgentsStoreAdapter } from "@/lib/store";
 
 export async function GET() {
-  const store = getAgentsStoreAdapter();
+  const store = await getAgentsStoreAdapter();
   try {
     const agents = await store.readAll();
     return NextResponse.json({

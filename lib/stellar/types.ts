@@ -23,6 +23,19 @@ export interface ParsedCommand {
   destination?: string;
   amount?: string;
   confidence?: number;
+  agentIntent?: {
+    name?: string;
+    strategy:
+      | "auto_rebalance"
+      | "recurring_payment"
+      | "price_alert"
+      | "dca_bot"
+      | "savings_sweep";
+    templateId?: string;
+    summary?: string;
+    missingFields?: string[];
+    strategyConfig: Record<string, unknown>;
+  };
 }
 
 /** Chat message in the agent interface */

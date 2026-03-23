@@ -34,6 +34,24 @@ interface DashboardAgent {
   } | null;
 }
 
+interface ExecutionSummary {
+  total: number;
+  successful: number;
+  failed: number;
+  successRate: number;
+}
+
+interface RecentExecution {
+  id: string;
+  agentId: string;
+  agentName: string;
+  contractId: string | null;
+  triggerSource: string;
+  success: boolean;
+  txHash?: string | null;
+  createdAt: string;
+}
+
 export default function DashboardPage() {
   const { connected, address } = useWallet();
   const [agents, setAgents] = useState<DashboardAgent[]>([]);
@@ -41,6 +59,14 @@ export default function DashboardPage() {
   const [showTemplates, setShowTemplates] = useState(false);
   const [dueAgents, setDueAgents] = useState<AgentDueResult[]>([]);
   const [dueLoading, setDueLoading] = useState(false);
+  const [executionSummary, setExecutionSummary] = useState<ExecutionSummary>({
+    total: 0,
+    successful: 0,
+    failed: 0,
+    successRate: 0,
+  });
+  const [recentExecutions, setRecentExecutions] = useState<RecentExecution[]>([]);
+  const [executionLoading, setExecutionLoading] = useState(false);
 
   const fetchAgents = useCallback(async () => {
     if (!address) return;
@@ -85,18 +111,41 @@ export default function DashboardPage() {
     }
   }, [address]);
 
+  const fetchExecutionSummary = useCallback(async () => {
+    if (!address) return;
+    setExecutionLoading(true);
+    try {
+      const res = await fetch(`/api/agents/execution-summary?owner=${address}`);
+      if (!res.ok) throw new Error("Failed to fetch execution summary");
+      const data = await res.json();
+      setExecutionSummary((data.summary as ExecutionSummary) ?? {
+        total: 0,
+        successful: 0,
+        failed: 0,
+        successRate: 0,
+      });
+      setRecentExecutions((data.recent as RecentExecution[]) ?? []);
+    } catch (err) {
+      console.error("Execution summary fetch error:", err);
+    } finally {
+      setExecutionLoading(false);
+    }
+  }, [address]);
+
   useEffect(() => {
     if (connected && address) {
       fetchAgents();
       fetchDueAgents();
+      fetchExecutionSummary();
     }
-  }, [connected, address, fetchAgents, fetchDueAgents]);
+  }, [connected, address, fetchAgents, fetchDueAgents, fetchExecutionSummary]);
 
   // Stats
   const totalAgents = agents.length;
   const activeCount = agents.filter((a) => a.onChain?.active).length;
   const totalExecs = agents.reduce((s, a) => s + (a.onChain?.executions ?? 0), 0);
-  const successRate = totalExecs > 0 ? 100 : 0;
+  const successRate =
+    executionSummary.total > 0 ? executionSummary.successRate : totalExecs > 0 ? 100 : 0;
 
   return (
     <HudShell>
@@ -128,7 +177,11 @@ export default function DashboardPage() {
               </Link>
               {connected && (
                 <button
-                  onClick={fetchAgents}
+                  onClick={() => {
+                    fetchAgents();
+                    fetchDueAgents();
+                    fetchExecutionSummary();
+                  }}
                   disabled={loading}
                   className="rounded border border-border/40 p-1.5 text-muted transition-colors hover:text-foreground disabled:opacity-40"
                 >
@@ -180,13 +233,82 @@ export default function DashboardPage() {
               <div className="mt-1 text-xl font-bold text-accent">{activeCount}</div>
             </div>
             <div className="border border-border/40 bg-surface/80 px-4 py-3">
-              <div className="text-[10px] tracking-wider text-muted">TOTAL_EXECUTIONS</div>
-              <div className="mt-1 text-xl font-bold">{totalExecs}</div>
+              <div className="text-[10px] tracking-wider text-muted">LOGGED_EXECUTIONS</div>
+              <div className="mt-1 text-xl font-bold">
+                {executionLoading ? "..." : executionSummary.total || totalExecs}
+              </div>
             </div>
             <div className="border border-border/40 bg-surface/80 px-4 py-3">
               <div className="text-[10px] tracking-wider text-muted">SUCCESS_RATE</div>
               <div className="mt-1 text-xl font-bold text-accent">{successRate}%</div>
             </div>
+          </div>
+
+          <div className="mt-6">
+            <div className="mb-3 text-[10px] tracking-widest text-muted">
+              {"// RECENT_EXECUTIONS"}
+            </div>
+            {!connected ? (
+              <div className="border border-border/40 bg-surface/80 px-6 py-6 text-center text-sm text-muted">
+                <div>&gt; Connect your wallet to view execution activity</div>
+              </div>
+            ) : executionLoading ? (
+              <div className="flex items-center justify-center gap-2 border border-border/40 bg-surface/80 px-6 py-6 text-sm text-muted">
+                <Loader2 className="h-4 w-4 animate-spin" /> Loading execution activity...
+              </div>
+            ) : recentExecutions.length === 0 ? (
+              <div className="border border-border/40 bg-surface/80 px-6 py-6 text-center text-sm text-muted">
+                <div>&gt; No execution activity recorded yet</div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {recentExecutions.map((execution) => (
+                  <Link
+                    key={execution.id}
+                    href={execution.contractId ? `/agents/${execution.contractId}` : "/dashboard"}
+                    className="flex items-center justify-between border border-border/40 bg-surface/80 px-4 py-3 transition-colors hover:bg-surface-2/80"
+                  >
+                    <div>
+                      <div
+                        className={`text-xs font-bold tracking-wider ${
+                          execution.success ? "text-accent" : "text-red-400"
+                        }`}
+                      >
+                        {execution.agentName}
+                      </div>
+                      <div className="mt-0.5 text-[10px] tracking-wider text-muted">
+                        {execution.triggerSource} — {new Date(execution.createdAt).toLocaleString()}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span
+                        className={`rounded px-1.5 py-0.5 text-[9px] font-bold tracking-wider ${
+                          execution.success
+                            ? "bg-accent/20 text-accent"
+                            : "bg-red-500/20 text-red-400"
+                        }`}
+                      >
+                        {execution.success ? "SUCCESS" : "FAILED"}
+                      </span>
+                      {execution.txHash && (
+                        <span
+                          role="link"
+                          tabIndex={0}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            window.open(txExplorerUrl(execution.txHash!), "_blank");
+                          }}
+                          className="cursor-pointer text-muted transition-colors hover:text-accent"
+                        >
+                          <ExternalLink className="h-3.5 w-3.5" />
+                        </span>
+                      )}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Due Agents */}
@@ -337,8 +459,21 @@ export default function DashboardPage() {
           <div>&gt; Dashboard loaded</div>
           <div>&gt; {totalAgents} agents registered</div>
           <div>&gt; {activeCount} currently active</div>
-          <div>&gt; {totalExecs} total executions</div>
+          <div>&gt; {executionSummary.total || totalExecs} logged executions</div>
           <div>&gt; Success rate: {successRate}%</div>
+          <div>&gt; Failures recorded: {executionSummary.failed}</div>
+          {recentExecutions.length > 0 && (
+            <>
+              <div className="mt-3 border-t border-border/40 pt-2 text-[9px] tracking-widest">
+                RECENT_ACTIVITY
+              </div>
+              {recentExecutions.slice(0, 4).map((execution) => (
+                <div key={execution.id} className="mt-1">
+                  &gt; {execution.agentName} — {execution.success ? "SUCCESS" : "FAILED"}
+                </div>
+              ))}
+            </>
+          )}
           {agents.length > 0 && (
             <>
               <div className="mt-3 border-t border-border/40 pt-2 text-[9px] tracking-widest">

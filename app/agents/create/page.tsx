@@ -2,15 +2,42 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, CheckCircle, XCircle, Loader2, ExternalLink } from "lucide-react";
+import {
+  ArrowLeft,
+  CheckCircle,
+  Sparkles,
+  XCircle,
+  Loader2,
+  ExternalLink,
+} from "lucide-react";
 import Link from "next/link";
 import { HudShell } from "@/components/layout/HudShell";
 import { useWallet } from "@/lib/hooks/useWallet";
-import { AGENT_TEMPLATES, getTemplate } from "@/lib/agents/templates";
+import {
+  AGENT_TEMPLATES,
+  getTemplate,
+  getTemplateByStrategy,
+} from "@/lib/agents/templates";
+import { useAI } from "@/lib/hooks/useAI";
 import { txExplorerUrl } from "@/lib/utils/constants";
 import { getErrorMessage } from "@/lib/utils/errors";
+import {
+  supportedAgentStrategySchema,
+  validateStrategyConfig,
+} from "@/lib/utils/validation";
 
 type TxStatus = "idle" | "building" | "signing" | "submitting" | "success" | "failed";
+
+function buildAgentName(value?: string): string {
+  if (!value) return `AGENT_${Date.now()}`;
+
+  const normalized = value
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+  return normalized || `AGENT_${Date.now()}`;
+}
 
 export default function CreateAgentPage() {
   return (
@@ -30,6 +57,10 @@ function CreateAgentInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { connected, address, signTx } = useWallet();
+  const { parseCommand, loading: aiLoading } = useAI();
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiSummary, setAiSummary] = useState("");
+  const [aiMissingFields, setAiMissingFields] = useState<string[]>([]);
   const [name, setName] = useState("");
   const [strategy, setStrategy] = useState("");
   const [templateId, setTemplateId] = useState<string | null>(null);
@@ -39,6 +70,7 @@ function CreateAgentInner() {
   const [contractId, setContractId] = useState<string>("");
   const [agentStoreId, setAgentStoreId] = useState<string>("");
   const [errorMsg, setErrorMsg] = useState<string>("");
+  const [aiError, setAiError] = useState<string>("");
 
   // Pre-fill from template query param
   useEffect(() => {
@@ -63,6 +95,54 @@ function CreateAgentInner() {
     icon: t.icon,
   }));
 
+  async function handleAiAssist() {
+    if (!aiPrompt.trim()) return;
+
+    setAiError("");
+    setErrorMsg("");
+
+    try {
+      const parsed = await parseCommand(aiPrompt.trim());
+      const agentIntent = parsed.agentIntent;
+      if (parsed.action !== "create_agent" || !agentIntent) {
+        throw new Error("AI did not recognize an agent setup request. Try describing the automation in more detail.");
+      }
+
+      const parsedStrategy = supportedAgentStrategySchema.safeParse(
+        agentIntent.strategy
+      );
+      if (!parsedStrategy.success) {
+        throw new Error("AI returned an unsupported strategy.");
+      }
+
+      const resolvedTemplate =
+        (agentIntent.templateId
+          ? getTemplate(agentIntent.templateId)
+          : undefined) ?? getTemplateByStrategy(parsedStrategy.data);
+
+      setStrategy(parsedStrategy.data);
+      setTemplateId(resolvedTemplate?.id ?? null);
+      setStrategyConfig({
+        ...(resolvedTemplate?.defaults ?? {}),
+        ...agentIntent.strategyConfig,
+      });
+      setName((current) =>
+        current.trim()
+          ? current
+          : buildAgentName(
+              agentIntent.name ?? resolvedTemplate?.name ?? parsedStrategy.data
+            )
+      );
+      setAiSummary(
+        agentIntent.summary ??
+          `Parsed automation for ${parsedStrategy.data.replace(/_/g, " ")}.`
+      );
+      setAiMissingFields(agentIntent.missingFields ?? []);
+    } catch (err) {
+      setAiError(getErrorMessage(err));
+    }
+  }
+
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim() || !strategy || !address) return;
@@ -71,6 +151,22 @@ function CreateAgentInner() {
     setTxHash("");
 
     try {
+      const parsedStrategy = supportedAgentStrategySchema.safeParse(strategy);
+      if (!parsedStrategy.success) {
+        throw new Error("Please select a supported strategy.");
+      }
+
+      const validatedConfig = validateStrategyConfig(
+        parsedStrategy.data,
+        strategyConfig
+      );
+      if (!validatedConfig.success) {
+        throw new Error(
+          validatedConfig.error.issues[0]?.message ??
+            "Please complete the strategy configuration."
+        );
+      }
+
       // Step 1 — Build unsigned XDR via API (also stores agent)
       setTxStatus("building");
       const buildRes = await fetch("/api/agents", {
@@ -79,9 +175,9 @@ function CreateAgentInner() {
         body: JSON.stringify({
           owner: address,
           name,
-          strategy,
+          strategy: parsedStrategy.data,
           templateId,
-          strategyConfig,
+          strategyConfig: validatedConfig.data,
         }),
       });
 
@@ -175,6 +271,56 @@ function CreateAgentInner() {
             </div>
           ) : (
             <form onSubmit={handleCreate} className="max-w-3xl space-y-6">
+              <div className="space-y-3 border border-border/40 bg-surface/80 px-4 py-4">
+                <div className="flex items-center gap-2 text-xs font-semibold tracking-widest">
+                  <Sparkles className="h-4 w-4 text-accent" />
+                  AI_AGENT_SETUP
+                </div>
+                <div className="text-[10px] tracking-wider text-muted">
+                  Describe the automation you want and we&apos;ll prefill the
+                  strategy form for review.
+                </div>
+                <textarea
+                  value={aiPrompt}
+                  onChange={(e) => setAiPrompt(e.target.value)}
+                  placeholder='e.g. "Send 10 XLM to my savings wallet every Monday"'
+                  disabled={isWorking || txStatus === "success" || aiLoading}
+                  rows={4}
+                  className="w-full border border-border/40 bg-surface/90 px-4 py-3 text-sm outline-none placeholder:text-muted/40 focus:border-accent/50 disabled:opacity-50"
+                />
+                <button
+                  type="button"
+                  onClick={handleAiAssist}
+                  disabled={!aiPrompt.trim() || isWorking || txStatus === "success" || aiLoading}
+                  className="w-full border border-accent/40 bg-accent/10 py-2.5 text-[11px] font-semibold tracking-widest text-accent transition-colors hover:bg-accent/20 disabled:opacity-30"
+                >
+                  {aiLoading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ANALYZING_REQUEST...
+                    </span>
+                  ) : (
+                    "> PREFILL_WITH_AI"
+                  )}
+                </button>
+                {aiSummary && (
+                  <div className="border border-accent/30 bg-accent/5 px-3 py-3 text-[10px] tracking-wider text-muted">
+                    <div className="text-accent">{">"} AI_SUMMARY</div>
+                    <div className="mt-1">{aiSummary}</div>
+                    {aiMissingFields.length > 0 && (
+                      <div className="mt-2 text-amber-300">
+                        Missing fields: {aiMissingFields.join(", ")}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {aiError && (
+                  <div className="border border-red-500/40 bg-red-500/5 px-3 py-3 text-[10px] tracking-wider text-red-400">
+                    &gt; {aiError}
+                  </div>
+                )}
+              </div>
+
               {/* Agent Name */}
               <div>
                 <label className="mb-2 block text-[10px] tracking-widest text-muted">AGENT_NAME</label>
@@ -186,6 +332,9 @@ function CreateAgentInner() {
                   disabled={isWorking || txStatus === "success"}
                   className="w-full border border-border/40 bg-surface/80 px-4 py-2.5 text-sm outline-none placeholder:text-muted/40 focus:border-accent/50 disabled:opacity-50"
                 />
+                <div className="mt-1 text-[9px] tracking-wider text-muted">
+                  AI can suggest a name, but you can edit it before deploying.
+                </div>
               </div>
 
               {/* Strategy Selection (from templates) */}

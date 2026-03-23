@@ -1,0 +1,80 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Agent {
+  id                String          @id
+  contractId        String
+  owner             String
+  name              String
+  strategy          String
+  templateId        String?
+  createdAt         DateTime        @default(now())
+  txHash            String?
+  strategyConfig    Json?
+  strategyState     Json?
+  autoExecuteEnabled Boolean?       @default(false)
+  executionMode     String?
+  reminders         Json?
+  lastExecutionAt   DateTime?
+  nextExecutionAt   DateTime?
+  executionCount    Int?
+  fullAuto          Json?
+  executionLogs     ExecutionLog[]
+  feedbackEvents    FeedbackEvent[]
+  templateUsages    TemplateUsage[]
+
+  @@index([owner, createdAt])
+  @@index([strategy])
+  @@index([contractId])
+}
+
+model ExecutionLog {
+  id            String   @id @default(cuid())
+  agentId       String
+  triggerSource String
+  executionMode String?
+  success       Boolean
+  txHash        String?
+  failureReason String?
+  metadata      Json?
+  createdAt     DateTime @default(now())
+  agent         Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([agentId, createdAt])
+  @@index([success, createdAt])
+}
+
+model FeedbackEvent {
+  id         String   @id @default(cuid())
+  agentId     String?
+  owner      String?
+  type       String
+  score      Int?
+  comment    String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+  agent      Agent?   @relation(fields: [agentId], references: [id], onDelete: SetNull)
+
+  @@index([agentId, createdAt])
+  @@index([type, createdAt])
+}
+
+model TemplateUsage {
+  id         String   @id @default(cuid())
+  agentId     String?
+  templateId String
+  owner      String?
+  source     String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+  agent      Agent?   @relation(fields: [agentId], references: [id], onDelete: SetNull)
+
+  @@index([templateId, createdAt])
+  @@index([owner, createdAt])
+}

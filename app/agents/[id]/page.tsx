@@ -44,6 +44,17 @@ interface ReminderPrefs {
 }
 type ExecutionMode = "manual" | "assisted_auto" | "full_auto";
 
+interface ExecutionLogItem {
+  id: string;
+  triggerSource: string;
+  executionMode?: string;
+  success: boolean;
+  txHash?: string | null;
+  failureReason?: string | null;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+}
+
 export default function AgentDetailPage() {
   const params = useParams();
   const contractId = params.id as string;
@@ -84,6 +95,8 @@ export default function AgentDetailPage() {
   const [keySaving, setKeySaving] = useState(false);
   const [keyError, setKeyError] = useState("");
   const [keySaved, setKeySaved] = useState(false);
+  const [executionLogs, setExecutionLogs] = useState<ExecutionLogItem[]>([]);
+  const [logsLoading, setLogsLoading] = useState(false);
 
   // Fetch on-chain config
   const fetchConfig = useCallback(async () => {
@@ -143,6 +156,26 @@ export default function AgentDetailPage() {
     if (connected && address) fetchStoredAgent();
   }, [connected, address, fetchStoredAgent]);
 
+  const fetchExecutionLogs = useCallback(async (id: string) => {
+    setLogsLoading(true);
+    try {
+      const res = await fetch(`/api/agents/${id}/executions`);
+      if (!res.ok) throw new Error("Failed to load execution logs");
+      const data = await res.json();
+      setExecutionLogs((data.logs as ExecutionLogItem[]) ?? []);
+    } catch (err) {
+      console.error("Failed to load execution logs:", err);
+    } finally {
+      setLogsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (agentStoreId) {
+      fetchExecutionLogs(agentStoreId);
+    }
+  }, [agentStoreId, fetchExecutionLogs]);
+
   // Execute agent
   async function handleExecute(e: React.FormEvent) {
     e.preventDefault();
@@ -191,6 +224,25 @@ export default function AgentDetailPage() {
       if (result.status === "SUCCESS" || result.status === "PENDING") {
         setExecHash(result.hash);
         setExecStatus("success");
+        if (agentStoreId) {
+          await fetch(`/api/agents/${agentStoreId}/executions`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              triggerSource: "manual_wallet",
+              executionMode: "manual",
+              success: true,
+              txHash: result.hash,
+              recordExecution: true,
+              metadata: {
+                contractId,
+                recipient: execRecipient,
+                amountXlm: Number(execAmount),
+              },
+            }),
+          });
+          await fetchExecutionLogs(agentStoreId);
+        }
         // Refresh config to get updated execution count
         await fetchConfig();
       } else {
@@ -249,15 +301,23 @@ export default function AgentDetailPage() {
         setAutoExecHash(submitData.hash as string);
 
         if (data.agentStoreId) {
-          fetch(`/api/agents/${data.agentStoreId as string}`, {
-            method: "PATCH",
+          await fetch(`/api/agents/${data.agentStoreId as string}/executions`, {
+            method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
+              triggerSource: "manual_assisted",
+              executionMode,
+              success: true,
               txHash: submitData.hash,
               recordExecution: true,
               nextExecutionAt: data.nextExecutionAt ?? null,
+              metadata: {
+                contractId,
+                reason: data.reason ?? null,
+              },
             }),
-          }).catch(() => {});
+          });
+          await fetchExecutionLogs(data.agentStoreId as string);
         }
 
         await fetchConfig();
@@ -659,6 +719,70 @@ export default function AgentDetailPage() {
                     )}
                   </div>
                 )}
+              </div>
+
+              <div className="mt-6">
+                <div className="mb-3 flex items-center justify-between">
+                  <div className="text-[10px] tracking-widest text-muted">
+                    {"// EXECUTION_HISTORY"}
+                  </div>
+                  {agentStoreId && (
+                    <button
+                      type="button"
+                      onClick={() => fetchExecutionLogs(agentStoreId)}
+                      className="rounded border border-border/40 p-1.5 text-muted transition-colors hover:text-foreground"
+                    >
+                      <RefreshCw className={`h-3.5 w-3.5 ${logsLoading ? "animate-spin" : ""}`} />
+                    </button>
+                  )}
+                </div>
+                <div className="space-y-2 border border-border/40 bg-surface/80 px-4 py-4">
+                  {logsLoading ? (
+                    <div className="flex items-center gap-2 text-[10px] tracking-wider text-muted">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      LOADING_LOGS...
+                    </div>
+                  ) : executionLogs.length === 0 ? (
+                    <div className="text-[10px] tracking-wider text-muted">
+                      &gt; No execution history recorded yet.
+                    </div>
+                  ) : (
+                    executionLogs.slice(0, 10).map((log) => (
+                      <div
+                        key={log.id}
+                        className="border border-border/30 bg-surface/90 px-3 py-3 text-[10px] tracking-wider"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div className={log.success ? "text-accent" : "text-red-400"}>
+                            {log.success ? "SUCCESS" : "FAILED"} // {log.triggerSource}
+                          </div>
+                          <div className="text-muted">
+                            {new Date(log.createdAt).toLocaleString()}
+                          </div>
+                        </div>
+                        <div className="mt-1 text-muted">
+                          MODE: {log.executionMode ?? "unknown"}
+                        </div>
+                        {log.failureReason && (
+                          <div className="mt-1 text-red-400">
+                            ERROR: {log.failureReason}
+                          </div>
+                        )}
+                        {log.txHash && (
+                          <a
+                            href={txExplorerUrl(log.txHash)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-1 inline-flex items-center gap-1 text-accent underline"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                            View transaction
+                          </a>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
 
               {/* EXECUTION MODE */}

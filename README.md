@@ -26,22 +26,23 @@
 
 ## Test Results
 
-**55 Vitest tests** + **5 Rust contract tests** = **60 total tests passing**
+**62 Vitest tests** + **5 Rust contract tests** = **67 total tests passing**
 
 ```
- ✓ tests/unit/security.test.ts (2 tests) 6ms
- ✓ tests/unit/scheduler.test.ts (3 tests) 6ms
- ✓ tests/unit/ai.test.ts (13 tests) 10ms
- ✓ tests/integration/agent-flow.test.ts (10 tests) 9ms
- ✓ tests/unit/stellar.test.ts (27 tests) 23ms
+ ✓ tests/unit/scheduler.test.ts (3 tests) 19ms
+ ✓ tests/unit/security.test.ts (2 tests) 12ms
+ ✓ tests/unit/ai.test.ts (14 tests) 11ms
+ ✓ tests/unit/execution-logs.test.ts (3 tests) 23ms
+ ✓ tests/unit/execution-routes.test.ts (3 tests) 70ms
+ ✓ tests/unit/stellar.test.ts (27 tests) 40ms
+ ✓ tests/integration/agent-flow.test.ts (10 tests) 16ms
 
- Test Files  5 passed (5)
-      Tests  55 passed (55)
-   Start at  16:04:52
-   Duration  643ms
+ Test Files  7 passed (7)
+      Tests  62 passed (62)
+   Duration  1.49s
 ```
 
-> 📸 **Screenshot:** [Test output showing 50 tests passing]
+> 📸 **Screenshot:** [Test output from an earlier milestone checkpoint]
 >
 
 <img width="829" height="229" alt="image" src="https://github.com/user-attachments/assets/d844768d-0305-4e4a-bbc9-33b2f2e8d99c" />
@@ -53,7 +54,7 @@
 
 - GitHub Actions workflow: `.github/workflows/ci.yml`
 - Runs on every push and pull request
-- Web checks: `npm ci` → `npm run lint` → `npm test` → `npm run build -- --webpack`
+- Web checks: `npm ci` → `npm run lint` → `npm test` → `npm run build`
 - Contract checks: `cargo test --manifest-path contracts/agent/Cargo.toml`
 
 ---
@@ -78,6 +79,9 @@ Stellar AI Agent Network is a platform where users interact with the Stellar blo
 - **AI parses** your intent using Google Gemini 2.5 Flash
 - **Execute** real XLM transactions on Stellar Testnet
 - **Deploy & manage** AI Agents via Soroban smart contracts
+- **Create agents from natural language** with AI-assisted strategy prefill
+- **Persist agent state in PostgreSQL via Prisma** or fall back to JSON/Redis
+- **Track execution history** with durable logs and dashboard activity
 - **Track** transaction results with explorer links
 
 ---
@@ -150,7 +154,7 @@ Stellar AI Agent Network is a platform where users interact with the Stellar blo
 | 1 | Agent Templates — 3 pre-built templates (Auto-Rebalancer, Bill Scheduler, Price Alert) | ✅ Done |
 | 2 | Agent Dashboard — Real on-chain data, analytics, template browser | ✅ Done |
 | 3 | Server-Side Persistence — JSON file-based agent store | ✅ Done |
-| 4 | Testing Suite — 50 Vitest + 5 Rust = 55 total tests | ✅ Done |
+| 4 | Testing Suite — strong automated coverage foundation | ✅ Done |
 | 5 | API Expansion — Agent CRUD routes (GET/POST + [id] GET/PATCH) | ✅ Done |
 | 6 | Template Pre-Fill — Create agents from templates via URL params | ✅ Done |
 
@@ -165,12 +169,26 @@ Stellar AI Agent Network is a platform where users interact with the Stellar blo
 | 5 | Template expansion to 5 (DCA Bot, Savings Sweep) | ✅ Done |
 | 6 | Security guardrails (caps, idempotency, retry/backoff, cron auth) | ✅ Done |
 
+### Level 5 — Blue Belt ✅
+
+| # | Requirement | Status |
+|---|------------|--------|
+| 1 | PostgreSQL + Prisma persistence layer | ✅ Done |
+| 2 | JSON/Redis → Prisma migration path | ✅ Done |
+| 3 | AI-assisted natural language agent setup | ✅ Done |
+| 4 | Strategy config validation on create/deploy | ✅ Done |
+| 5 | Durable execution history + agent audit trail | ✅ Done |
+| 6 | Dashboard execution activity summary | ✅ Done |
+
 ### Additional Features Built
 - AI-powered natural language command parsing (Gemini 2.5 Flash)
+- AI-assisted natural language agent creation for recurring payments, alerts, DCA, sweeps, and rebalancing
 - Terminal/HUD-style UI designed from Figma
 - Dark/Light theme toggle
 - `help`, `status`, `clear` meta commands
 - Real-time activity log in right sidebar
+- Execution history on agent detail pages
+- Owner-scoped recent execution activity on dashboard
 - Clickable transaction hash links to Stellar Explorer
 - Balance auto-refresh after transactions
 - Comprehensive error handling (wallet not found, tx rejected, insufficient balance)
@@ -189,6 +207,7 @@ Stellar AI Agent Network is a platform where users interact with the Stellar blo
 | Wallet SDKs | @stellar/freighter-api, @albedo-link/intent | 6.0.1, latest |
 | Smart Contracts | Soroban (Rust) + soroban-sdk | 21.0.0 |
 | AI Engine | Google Gemini (generative-ai) | 0.24.1 |
+| Database | PostgreSQL + Prisma | 16 / 6.x |
 | State | React hooks + Zustand | 5.0.11 |
 | Testing | Vitest + Testing Library | 4.0.18 |
 | Validation | Zod | 4.3.6 |
@@ -242,8 +261,11 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 NEXT_PUBLIC_AGENT_CONTRACT_ID=CAGIKMTM5ZGZZLYDHFI3EOI6GTJX7ODAJN2PW4JXNMNXKOFD5FBTQJKB
 
 # ── Agent Store Backend ──
-# json | redis
+# json | redis | prisma
 AGENT_STORE_BACKEND=json
+
+# PostgreSQL / Prisma - required when AGENT_STORE_BACKEND=prisma
+DATABASE_URL=
 
 # Redis (Upstash REST) - required when AGENT_STORE_BACKEND=redis
 UPSTASH_REDIS_REST_URL=
@@ -266,6 +288,8 @@ TELEGRAM_BOT_TOKEN=
 AUTO_SIGNING_MASTER_KEY=
 ```
 
+For Prisma CLI commands, also create a local `.env` file with the same `DATABASE_URL`, since `npx prisma ...` reads `.env` directly.
+
 ### Run Development Server
 
 ```bash
@@ -284,7 +308,7 @@ npm start
 ### Run Tests
 
 ```bash
-# Run all Vitest tests (55 tests — unit + integration)
+# Run all Vitest tests (62 tests — unit + integration)
 npm test
 
 # Watch mode
@@ -294,7 +318,7 @@ npm run test:watch
 cd contracts && bash scripts/test.sh
 ```
 
-### Store Health + Redis Migration (Phase 0)
+### Store Health + Persistence Backends
 
 Check active store backend:
 
@@ -311,10 +335,19 @@ UPSTASH_REDIS_REST_TOKEN=... \
 npm run migrate:agents:redis
 ```
 
-**Test coverage:** 60 total tests
+Migrate local JSON agents into PostgreSQL/Prisma:
+
+```bash
+npx prisma generate
+npx prisma migrate dev --name init_agents_store
+node scripts/migrate-agents-json-to-prisma.mjs
+```
+
+**Test coverage:** 67 total tests
 - **27** — Stellar utilities (formatting, validation, error handling)
-- **13** — AI parsing logic (command validation, JSON extraction)
+- **14** — AI parsing + agent-intent validation
 - **10** — Agent integration flow (templates, create→deploy pipeline, dashboard)
+- **6** — Execution logging store + route coverage
 - **5** — Level 4 security + scheduler state tests
 - **5** — Soroban contract (Rust: initialize, execute, toggle, edge cases)
 
@@ -341,23 +374,25 @@ stellar-ai-network/
 │   ├── page.tsx                      # Main HUD — wallet + chat + transactions
 │   ├── layout.tsx                    # Root layout with ThemeProvider
 │   ├── globals.css                   # Tailwind v4 theme tokens + HUD styles
-│   ├── dashboard/page.tsx            # Agent dashboard (real data + analytics)
+│   ├── dashboard/page.tsx            # Agent dashboard + execution activity
 │   ├── agents/
 │   │   ├── page.tsx                  # Agent listing — filters, stats, on-chain data
-│   │   ├── create/page.tsx           # Create agent — template pre-fill + store
-│   │   └── [id]/page.tsx             # Agent detail — execute, toggle, config
+│   │   ├── create/page.tsx           # Create agent — AI-assisted prefill + deploy
+│   │   └── [id]/page.tsx             # Agent detail — execute, toggle, history
 │   ├── marketplace/page.tsx          # Template marketplace — browse & deploy
-│   ├── analytics/page.tsx            # Agent analytics — KPIs, charts, rankings
+│   ├── analytics/page.tsx            # Early metrics view (Level 6 not finalized)
 │   └── api/
 │       ├── ai/parse/route.ts         # Gemini AI command parsing
 │       ├── agents/
 │       │   ├── route.ts              # GET list + POST create agent
 │       │   ├── [id]/route.ts         # GET agent + PATCH update txHash/execution
+│       │   ├── [id]/executions/route.ts # GET/POST execution history
 │       │   ├── [id]/execution-mode/route.ts # POST mode config
 │       │   ├── [id]/key-consent/route.ts    # POST consent for full-auto
 │       │   ├── [id]/key-store/route.ts      # POST/DELETE encrypted key storage
 │       │   ├── [id]/reminders/route.ts      # GET/POST reminder settings
 │       │   ├── execute/route.ts      # POST — execute agent action
+│       │   ├── execution-summary/route.ts # Owner-scoped execution activity
 │       │   └── toggle/route.ts       # POST — toggle agent active state
 │       ├── agents/due/route.ts       # GET due agents for owner
 │       ├── cron/
@@ -385,6 +420,8 @@ stellar-ai-network/
 │   │   ├── templates.ts              # 5 pre-built agent templates
 │   │   ├── modes.ts                  # Execution mode helpers
 │   │   └── strategies/               # Strategy decision engines
+│   ├── db/
+│   │   └── client.ts                 # Prisma client singleton
 │   ├── hooks/
 │   │   ├── useWallet.ts              # Multi-wallet store (Zustand)
 │   │   ├── useAI.ts                  # AI command parsing hook
@@ -394,7 +431,9 @@ stellar-ai-network/
 │   │   ├── contracts.ts              # Soroban RPC wrapper (build, submit, read)
 │   │   └── types.ts                  # ChatMessage, TransactionResult, ParsedCommand
 │   ├── store/
-│   │   └── agents.ts                 # Server-side JSON file-based persistence
+│   │   ├── agents.ts                 # Agent persistence API
+│   │   ├── execution-logs.ts         # Durable execution history store
+│   │   └── adapters/                 # JSON / Redis / Prisma backends
 │   ├── scheduler/
 │   │   ├── state.ts                  # Due windows + idempotency state
 │   │   ├── budget.ts                 # Per-run caps
@@ -420,7 +459,12 @@ stellar-ai-network/
 │       └── validation.ts             # Zod schemas for API input
 │
 ├── data/
-│   └── agents.json                   # Persistent agent metadata store
+│   ├── agents.json                   # JSON fallback agent store
+│   └── execution-logs.json           # JSON fallback execution history
+│
+├── prisma/
+│   ├── schema.prisma                 # PostgreSQL schema
+│   └── migrations/                   # Prisma migrations
 │
 ├── contracts/
 │   ├── agent/
@@ -437,7 +481,9 @@ stellar-ai-network/
 │   ├── setup.ts                      # Testing Library / Vitest setup
 │   ├── unit/
 │   │   ├── stellar.test.ts           # 27 tests — formatting, validation, errors
-│   │   └── ai.test.ts                # 13 tests — command parsing, JSON extraction
+│   │   ├── ai.test.ts                # 14 tests — command parsing, agent intents
+│   │   ├── execution-logs.test.ts    # 3 tests — execution log store
+│   │   └── execution-routes.test.ts  # 3 tests — execution log APIs
 │   └── integration/
 │       └── agent-flow.test.ts        # 10 tests — templates, deploy pipeline, dashboard
 │
@@ -455,7 +501,7 @@ stellar-ai-network/
 User types command
   → useAI.parseCommand()
     → POST /api/ai/parse
-      → Gemini AI extracts { action, destination, amount }
+      → Gemini AI extracts { action, destination, amount } or structured agentIntent
   → useStellar.sendXLM()
     → POST /api/stellar/send (build unsigned XDR)
     → Wallet signs XDR (Freighter/Albedo/Rabet)
@@ -473,6 +519,7 @@ User creates/executes agent
   → POST /api/stellar/submit-soroban
     → submitSorobanTx() sends + polls for result (up to 30s)
   → Result displayed with TX hash + explorer link
+  → Successful runs recorded in execution history
 ```
 
 ---
@@ -485,6 +532,8 @@ User creates/executes agent
 | `check my balance` | Show current XLM balance |
 | `Send 10 XLM to GXXX...` | AI-parsed transaction |
 | `create agent` | Navigate to agent creation page |
+| `send 10 XLM to my savings every Monday` | AI-assisted recurring payment setup |
+| `alert me if XLM drops below 0.1` | AI-assisted price alert setup |
 | `list agents` | View your deployed agents |
 | `agent templates` | Browse available agent templates |
 | `help` or `?` | Show all available commands |
@@ -573,9 +622,9 @@ Templates can be selected from the dashboard template browser or the create page
 |-------|--------|----------|
 | **1 — White Belt** | ✅ Complete | Wallet, AI commands, transactions |
 | **2 — Yellow Belt** | ✅ Complete | Multi-wallet, Soroban contract, contract integration |
-| **3 — Orange Belt** | ✅ Complete | Agent templates, dashboard, 55 tests |
+| **3 — Orange Belt** | ✅ Complete | Agent templates, dashboard, tested app foundation |
 | **4 — Green Belt** | ✅ Complete | Scheduler, reminders, execution modes, key vault, 5 templates |
-| 5 — Blue Belt | ⏳ Planned | Database, multi-agent management |
+| **5 — Blue Belt** | ✅ Complete | Prisma/Postgres, AI setup, execution history, dashboard activity |
 | 6 — Black Belt | ⏳ Planned | Analytics, leaderboard, mainnet |
 
 ---

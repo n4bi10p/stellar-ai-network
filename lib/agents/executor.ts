@@ -6,6 +6,7 @@ import {
   updateAgentStrategy,
   type StoredAgent,
 } from "@/lib/store/agents";
+import { addExecutionLog } from "@/lib/store/execution-logs";
 import { decideStrategy, type StrategyContext } from "./strategies";
 import { signSorobanXdrWithSecret } from "@/lib/stellar/auto-sign";
 import { resolveExecutionMode } from "@/lib/agents/modes";
@@ -88,8 +89,15 @@ export async function executeAgentOnce(options: {
   /** When true, submit to Soroban RPC; when false, only build XDR. */
   submit?: boolean;
   signWithSecretKey?: string;
+  triggerSource?: string;
 }): Promise<AgentExecutionResult & { xdr?: string }> {
-  const { agentId, sourceAddress, submit = true, signWithSecretKey } = options;
+  const {
+    agentId,
+    sourceAddress,
+    submit = true,
+    signWithSecretKey,
+    triggerSource = signWithSecretKey ? "cron_full_auto" : "manual_assisted",
+  } = options;
   const agent = await getAgentById(agentId);
   if (!agent) {
     return {
@@ -168,13 +176,30 @@ export async function executeAgentOnce(options: {
       ? signSorobanXdrWithSecret({ xdr, secretKey: signWithSecretKey })
       : xdr;
     const result = await submitSorobanTx(signedXdr);
-    const nowIso = new Date().toISOString();
-    await recordAgentExecution(agentId, {
-      lastExecutionAt: nowIso,
-      nextExecutionAt: decision.nextExecutionAt ?? null,
+    const success = result.status === "SUCCESS" || result.status === "PENDING";
+
+    await addExecutionLog({
+      agentId,
+      triggerSource,
+      executionMode: resolveExecutionMode(agent),
+      success,
+      txHash: result.hash,
+      failureReason: success ? null : "Execution failed on-chain",
+      metadata: {
+        contractId: agent.contractId,
+        recipient: decision.recipient,
+        amountXlm: decision.amountXlm,
+        nextExecutionAt: decision.nextExecutionAt ?? null,
+      },
     });
 
-    const success = result.status === "SUCCESS" || result.status === "PENDING";
+    if (success) {
+      const nowIso = new Date().toISOString();
+      await recordAgentExecution(agentId, {
+        lastExecutionAt: nowIso,
+        nextExecutionAt: decision.nextExecutionAt ?? null,
+      });
+    }
 
     return {
       agentId,
@@ -187,6 +212,20 @@ export async function executeAgentOnce(options: {
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    await addExecutionLog({
+      agentId,
+      triggerSource,
+      executionMode: resolveExecutionMode(agent),
+      success: false,
+      failureReason: message,
+      metadata: {
+        contractId: agent.contractId,
+        recipient: decision.recipient,
+        amountXlm: decision.amountXlm,
+        nextExecutionAt: decision.nextExecutionAt ?? null,
+      },
+    });
+
     return {
       agentId,
       contractId: agent.contractId,
@@ -217,6 +256,7 @@ export async function executeAgentWithSecret(options: {
     sourceAddress: agent.owner,
     submit: true,
     signWithSecretKey: options.secretKey,
+    triggerSource: "cron_full_auto",
   });
 }
 

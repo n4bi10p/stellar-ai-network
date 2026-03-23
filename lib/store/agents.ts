@@ -8,7 +8,7 @@ export type { StoredAgent } from "@/lib/store/types";
 
 /** Read all agents from configured store */
 export async function readAgents(): Promise<StoredAgent[]> {
-  const store = getAgentsStoreAdapter();
+  const store = await getAgentsStoreAdapter();
   return store.readAll();
 }
 
@@ -23,7 +23,7 @@ export async function addAgent(
     createdAt: new Date().toISOString(),
   };
   agents.push(newAgent);
-  const store = getAgentsStoreAdapter();
+  const store = await getAgentsStoreAdapter();
   await store.writeAll(agents);
   return newAgent;
 }
@@ -46,7 +46,7 @@ export async function updateAgentTxHash(id: string, txHash: string): Promise<voi
   const idx = agents.findIndex((a) => a.id === id);
   if (idx >= 0) {
     agents[idx].txHash = txHash;
-    const store = getAgentsStoreAdapter();
+    const store = await getAgentsStoreAdapter();
     await store.writeAll(agents);
   }
 }
@@ -61,7 +61,7 @@ export async function updateAgent(
   if (idx < 0) return null;
   const updated: StoredAgent = { ...agents[idx], ...patch };
   agents[idx] = updated;
-  const store = getAgentsStoreAdapter();
+  const store = await getAgentsStoreAdapter();
   await store.writeAll(agents);
   return updated;
 }
@@ -126,8 +126,7 @@ export async function deleteAgent(id: string): Promise<boolean> {
   const agents = await readAgents();
   const filtered = agents.filter((a) => a.id !== id);
   if (filtered.length === agents.length) return false;
-  const store = getAgentsStoreAdapter();
+  const store = await getAgentsStoreAdapter();
   await store.writeAll(filtered);
   return true;
 }
-
