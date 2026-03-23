@@ -5,9 +5,11 @@ import type { WalletProvider, WalletId } from "./types";
 import { freighterProvider } from "./freighter";
 import { albedoProvider } from "./albedo";
 import { rabetProvider } from "./rabet";
+import { walletConnectProvider } from "./walletconnect";
 
 /** All supported wallet providers, ordered by display priority */
 export const WALLET_PROVIDERS: WalletProvider[] = [
+  walletConnectProvider,
   freighterProvider,
   albedoProvider,
   rabetProvider,

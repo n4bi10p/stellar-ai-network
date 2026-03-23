@@ -13,6 +13,8 @@ const meta: WalletMeta = {
   description: "Stellar's most popular browser wallet",
   installUrl: "https://www.freighter.app/",
   icon: "🚀",
+  platforms: ["desktop"],
+  connectionMethod: "extension",
 };
 
 export const freighterProvider: WalletProvider = {

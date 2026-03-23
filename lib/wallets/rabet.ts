@@ -25,6 +25,8 @@ const meta: WalletMeta = {
   description: "Fast Stellar browser extension wallet",
   installUrl: "https://rabet.io/",
   icon: "🦊",
+  platforms: ["desktop"],
+  connectionMethod: "extension",
 };
 
 export const rabetProvider: WalletProvider = {

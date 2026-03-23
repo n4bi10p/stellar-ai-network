@@ -11,7 +11,35 @@ const meta: WalletMeta = {
   description: "Web-based Stellar signer — no extension needed",
   installUrl: "https://albedo.link/",
   icon: "🌐",
+  platforms: ["desktop", "mobile"],
+  connectionMethod: "popup",
 };
+
+const ALBEDO_TIMEOUT_MS = 15_000;
+
+function isMobileBrowser(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+}
+
+async function withAlbedoTimeout<T>(promise: Promise<T>, action: string): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timeoutId = setTimeout(() => {
+          const suffix = isMobileBrowser()
+            ? " Albedo uses a popup flow on mobile, so open the app in Safari and allow popups."
+            : "";
+          reject(new Error(`Albedo ${action} timed out.${suffix}`));
+        }, ALBEDO_TIMEOUT_MS);
+      }),
+    ]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
 
 export const albedoProvider: WalletProvider = {
   meta,
@@ -22,7 +50,10 @@ export const albedoProvider: WalletProvider = {
   },
 
   async connect(): Promise<string> {
-    const result = await albedo.publicKey({});
+    const result = await withAlbedoTimeout(
+      albedo.publicKey({}),
+      "connection"
+    );
     if (!result.pubkey) {
       throw new Error("Albedo did not return a public key.");
     }
@@ -33,10 +64,13 @@ export const albedoProvider: WalletProvider = {
     xdr: string,
     networkPassphrase: string
   ): Promise<string> {
-    const result = await albedo.tx({
-      xdr,
-      network: networkPassphrase.includes("Test") ? "testnet" : "public",
-    });
+    const result = await withAlbedoTimeout(
+      albedo.tx({
+        xdr,
+        network: networkPassphrase.includes("Test") ? "testnet" : "public",
+      }),
+      "signature request"
+    );
     if (!result.signed_envelope_xdr) {
       throw new Error("Albedo did not return a signed transaction.");
     }

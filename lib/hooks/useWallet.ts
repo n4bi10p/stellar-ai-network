@@ -7,6 +7,33 @@ import type { WalletState } from "@/lib/stellar/types";
 import type { WalletId, WalletProvider } from "@/lib/wallets/types";
 import { getProvider, WALLET_PROVIDERS } from "@/lib/wallets";
 
+function getWalletErrorMessage(err: unknown): string {
+  if (err instanceof Error && err.message) return err.message;
+  if (typeof err === "string") return err;
+  if (err && typeof err === "object") {
+    const keys = Object.keys(err);
+    if (keys.length === 0) {
+      return "Wallet connection did not complete. Reopen the wallet app and try again.";
+    }
+
+    const message = Reflect.get(err, "message");
+    if (typeof message === "string" && message) return message;
+
+    const nested = Reflect.get(err, "error");
+    if (nested && typeof nested === "object") {
+      const nestedMessage = Reflect.get(nested, "message");
+      if (typeof nestedMessage === "string" && nestedMessage) return nestedMessage;
+    }
+
+    const reason = Reflect.get(err, "reason");
+    if (typeof reason === "string" && reason) return reason;
+
+    const name = Reflect.get(err, "name");
+    if (typeof name === "string" && name) return `${name}: wallet request failed`;
+  }
+  return "Connection failed";
+}
+
 interface WalletStore extends WalletState {
   /** Currently active wallet provider id */
   activeWallet: WalletId | null;
@@ -88,13 +115,19 @@ export const useWallet = create<WalletStore>((set, get) => ({
         `[WALLET] Connected via ${provider.meta.name}: ${address.slice(0, 8)}...`
       );
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Connection failed";
+      const msg = getWalletErrorMessage(err);
       set({ loading: false, error: msg });
-      console.error("[WALLET] Connection error:", msg);
+      console.error("[WALLET] Connection error:", err);
     }
   },
 
   disconnect: () => {
+    const provider = get()._provider;
+    if (provider?.disconnect) {
+      void provider.disconnect().catch((err) => {
+        console.error("[WALLET] Disconnect error:", err);
+      });
+    }
     set({
       connected: false,
       address: "",

@@ -1,3 +1,5 @@
+import fs from "fs/promises";
+import path from "path";
 import { describe, expect, it, beforeEach } from "vitest";
 import {
   getHourlyWindow,
@@ -10,6 +12,8 @@ describe("scheduler state", () => {
   beforeEach(() => {
     delete process.env.UPSTASH_REDIS_REST_URL;
     delete process.env.UPSTASH_REDIS_REST_TOKEN;
+    const stateFile = path.join(process.cwd(), "data", "scheduler-state.json");
+    return fs.rm(stateFile, { force: true });
   });
 
   it("builds UTC hourly window key", () => {

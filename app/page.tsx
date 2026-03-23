@@ -58,6 +58,19 @@ const GREETING_MESSAGE = `> Hello, operator.
 >
 > Type 'help' to see all available commands.`;
 
+function createMessageId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+
+  if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
+    const values = crypto.getRandomValues(new Uint32Array(4));
+    return Array.from(values, (value) => value.toString(16).padStart(8, "0")).join("-");
+  }
+
+  return `msg-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
 export default function Home() {
   const router = useRouter();
   const [input, setInput] = useState("");
@@ -86,7 +99,7 @@ export default function Home() {
     extra?: Partial<ChatMessage>
   ) {
     const msg: ChatMessage = {
-      id: crypto.randomUUID(),
+      id: createMessageId(),
       role,
       content,
       timestamp: timestamp(),

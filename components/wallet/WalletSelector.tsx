@@ -4,7 +4,13 @@ import { useState, useEffect } from "react";
 import { Wallet, X, Loader2, ExternalLink } from "lucide-react";
 import { useWallet } from "@/lib/hooks/useWallet";
 import { WALLET_PROVIDERS } from "@/lib/wallets";
-import type { WalletId } from "@/lib/wallets/types";
+import type { WalletId, WalletPlatform, WalletProvider } from "@/lib/wallets/types";
+
+function detectPlatform(): WalletPlatform {
+  if (typeof window === "undefined") return "desktop";
+  const ua = window.navigator.userAgent.toLowerCase();
+  return /android|iphone|ipad|ipod|mobile/.test(ua) ? "mobile" : "desktop";
+}
 
 /**
  * HUD-styled wallet selector modal.
@@ -21,6 +27,12 @@ export function WalletSelector({
   const [detected, setDetected] = useState<WalletId[] | null>(null);
   const checking = open && detected === null;
   const [connectingId, setConnectingId] = useState<WalletId | null>(null);
+  const [platform, setPlatform] = useState<WalletPlatform>("desktop");
+
+  useEffect(() => {
+    if (!open) return;
+    setPlatform(detectPlatform());
+  }, [open]);
 
   // Detect which wallets are installed
   useEffect(() => {
@@ -37,6 +49,32 @@ export function WalletSelector({
   }, [open]);
 
   if (!open) return null;
+
+  const visibleProviders =
+    platform === "mobile"
+      ? WALLET_PROVIDERS.filter(
+          (provider) =>
+            provider.meta.connectionMethod === "walletconnect" ||
+            provider.meta.platforms.includes("mobile")
+        )
+      : WALLET_PROVIDERS;
+
+  const sortedProviders = [...visibleProviders].sort((a, b) => {
+    const aPrimary = a.meta.platforms.includes(platform);
+    const bPrimary = b.meta.platforms.includes(platform);
+    if (aPrimary !== bPrimary) return aPrimary ? -1 : 1;
+
+    if (platform === "mobile") {
+      if (a.meta.connectionMethod === "walletconnect" && b.meta.connectionMethod !== "walletconnect") {
+        return -1;
+      }
+      if (b.meta.connectionMethod === "walletconnect" && a.meta.connectionMethod !== "walletconnect") {
+        return 1;
+      }
+    }
+
+    return 0;
+  });
 
   async function handleSelect(id: WalletId) {
     setConnectingId(id);
@@ -71,17 +109,23 @@ export function WalletSelector({
               Detecting wallets...
             </div>
           ) : (
-            WALLET_PROVIDERS.map((provider) => {
+            sortedProviders.map((provider: WalletProvider) => {
               const available =
                 (detected ?? []).includes(provider.meta.id) ||
                 provider.meta.id === "albedo"; // Albedo is always available
               const isConnecting = connectingId === provider.meta.id;
+              const installable = provider.meta.connectionMethod !== "walletconnect";
+              const disabled =
+                loading ||
+                (!available &&
+                  provider.meta.id !== "albedo" &&
+                  provider.meta.id !== "walletconnect");
 
               return (
                 <button
                   key={provider.meta.id}
                   onClick={() => handleSelect(provider.meta.id)}
-                  disabled={loading || (!available && provider.meta.id !== "albedo")}
+                  disabled={disabled}
                   className={`flex w-full items-center gap-3 border px-4 py-3 text-left transition-colors ${
                     available
                       ? "border-border/40 bg-surface-2/50 hover:border-accent/50 hover:bg-surface-2"
@@ -97,9 +141,16 @@ export function WalletSelector({
                       <span className="text-sm font-semibold tracking-wide">
                         {provider.meta.name}
                       </span>
+                      {provider.meta.badgeLabel && (
+                        <span className="rounded bg-accent/15 px-1.5 py-0.5 text-[9px] tracking-wider text-accent">
+                          {provider.meta.badgeLabel}
+                        </span>
+                      )}
                       {available ? (
                         <span className="rounded bg-accent/20 px-1.5 py-0.5 text-[9px] tracking-wider text-accent">
-                          DETECTED
+                          {provider.meta.connectionMethod === "walletconnect"
+                            ? "READY"
+                            : "DETECTED"}
                         </span>
                       ) : (
                         <span className="rounded bg-red-500/20 px-1.5 py-0.5 text-[9px] tracking-wider text-red-400">
@@ -110,12 +161,18 @@ export function WalletSelector({
                     <div className="mt-0.5 text-[10px] text-muted">
                       {provider.meta.description}
                     </div>
+                    {platform === "mobile" &&
+                      provider.meta.connectionMethod === "walletconnect" && (
+                        <div className="mt-1 text-[9px] tracking-wider text-accent">
+                          Recommended for mobile wallet-app handoff.
+                        </div>
+                      )}
                   </div>
 
                   {/* Action */}
                   {isConnecting ? (
                     <Loader2 className="h-4 w-4 animate-spin text-accent" />
-                  ) : !available ? (
+                  ) : !available && installable ? (
                     <a
                       href={provider.meta.installUrl}
                       target="_blank"
@@ -134,7 +191,9 @@ export function WalletSelector({
 
         {/* Footer hint */}
         <div className="border-t border-border/40 px-5 py-2.5 text-[10px] tracking-wider text-muted">
-          &gt; Select a wallet provider to connect to Stellar Testnet
+          {platform === "mobile"
+            ? "> Mobile detected. Use WalletConnect for wallet-app handoff; the first approval can take a moment after the wallet app opens."
+            : "> Select a wallet provider to connect to Stellar Testnet"}
         </div>
       </div>
     </div>
