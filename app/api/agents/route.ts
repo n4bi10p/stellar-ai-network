@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { buildInitialize } from "@/lib/stellar/contracts";
 import { readAgents, addAgent, getAgentsByOwner } from "@/lib/store/agents";
+import { saveUserEvent } from "@/lib/store/analytics";
 import {
   supportedAgentStrategySchema,
   validateStrategyConfig,
@@ -95,6 +96,14 @@ export async function POST(request: NextRequest) {
         keyRevokedAt: null,
       },
     });
+
+    // Emit analytics event (non-blocking)
+    saveUserEvent(owner, "agent_created", {
+      agentId: stored.id,
+      agentName: name,
+      strategy: parsedStrategy.data,
+      contractId,
+    }).catch(() => {}); // Silently fail if analytics unavailable
 
     return NextResponse.json({
       success: true,

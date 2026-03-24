@@ -7,6 +7,7 @@ import {
   updateAgent,
   recordAgentExecution,
 } from "@/lib/store/agents";
+import { saveUserEvent } from "@/lib/store/analytics";
 
 export async function GET(
   _request: NextRequest,
@@ -31,7 +32,7 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
-    const { txHash, recordExecution, nextExecutionAt } = await request.json();
+    const { txHash, recordExecution, nextExecutionAt, owner } = await request.json();
 
     if (!txHash && !recordExecution) {
       return NextResponse.json(
@@ -51,6 +52,14 @@ export async function PATCH(
       });
       if (txHash) {
         await updateAgent(id, { txHash });
+      }
+
+      // Emit analytics event (non-blocking) when transaction is confirmed
+      if (owner) {
+        saveUserEvent(owner, "agent_executed", {
+          agentId: id,
+          txHash,
+        }).catch(() => {}); // Silently fail if analytics unavailable
       }
     }
 

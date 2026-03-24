@@ -28,7 +28,6 @@ yarn-error.log*
 # local env files
 .env*.local
 .env
-prd.md
 
 # vercel
 .vercel
@@ -43,8 +42,5 @@ screen.png
 contracts/agent/target/
 data/agents.json
 LEVEL5_SUBMISSION_EVIDENCE.md
-AGENT_HANDOFF_SUMMARY.md
-DEPLOYMENT_GUIDE.md
-IMPLEMENTATION_SUMMARY.md
-PRODUCTION_CHECKLIST.md
-SUPABASE_SETUP.md
+CODEBASE_ANALYSIS.md
+prd.md

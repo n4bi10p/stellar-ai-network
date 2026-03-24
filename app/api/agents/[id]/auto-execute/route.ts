@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAgentsByOwner } from "@/lib/store/agents";
 import { executeAgentOnce } from "@/lib/agents/executor";
+import { saveExecutionEvent } from "@/lib/store/analytics";
 
 // POST /api/agents/[id]/auto-execute
 // - [id] is the Soroban contractId (matches /agents/[contractId] page)
@@ -59,6 +60,16 @@ export async function POST(
       sourceAddress,
       submit: false,
     });
+
+    // Emit analytics event (non-blocking)
+    saveExecutionEvent(
+      sourceAddress,
+      agent.id,
+      result.executed ? "success" : "failed",
+      result.txHash,
+      result.error,
+      { strategy: agent.strategy }
+    ).catch(() => {}); // Silently fail if analytics unavailable
 
     return NextResponse.json({
       ...result,

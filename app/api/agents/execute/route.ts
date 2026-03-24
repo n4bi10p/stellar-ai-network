@@ -3,6 +3,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { buildExecute } from "@/lib/stellar/contracts";
+import { saveExecutionEvent } from "@/lib/store/analytics";
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,6 +25,12 @@ export async function POST(request: NextRequest) {
       amountStroops,
       sourceAddress
     );
+
+    // Emit analytics event (non-blocking)
+    saveExecutionEvent(sourceAddress, contractId, "pending", undefined, undefined, {
+      recipient,
+      amount,
+    }).catch(() => {}); // Silently fail if analytics unavailable
 
     return NextResponse.json({
       success: true,
