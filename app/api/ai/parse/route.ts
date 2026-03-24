@@ -54,7 +54,8 @@ Rules:
 - Use "check_balance" ONLY when asked about balance, funds, holdings, or "how much".
 - Use "create_agent" when user wants to deploy/automate/schedule something.
 - Use "send_xlm" only for immediate direct transfers.
-- For "create_agent", extract: strategy, name, summary, missing fields, and config.
+- For "send_xlm": extract destination and amount, DO NOT include agentIntent.
+- For "create_agent": extract agentIntent with strategy, name, summary, missing fields, and config.
 - For time phrases: 1 hour=3600s, 1 day=86400s, 1 week=604800s, 1 month≈2592000s.
 - If fields are missing, list them in "missingFields" but still try to extract what you can.
 - Match to the best strategy from the supported list above.
@@ -62,9 +63,19 @@ Rules:
 
 User input: "${input}"
 
-Return ONLY valid JSON:
+Return ONLY valid JSON (with CORRECT structure for each action type):
+
+For send_xlm:
 {
-  "action": "send_xlm" | "check_balance" | "create_agent" | "greet",
+  "action": "send_xlm",
+  "confidence": 0.0,
+  "destination": "GABC...",
+  "amount": "100.5"
+}
+
+For create_agent:
+{
+  "action": "create_agent",
   "confidence": 0.0,
   "agentIntent": {
     "name": "Agent Name",
@@ -78,10 +89,17 @@ Return ONLY valid JSON:
   }
 }
 
+For check_balance or greet:
+{
+  "action": "check_balance" | "greet",
+  "confidence": 0.0
+}
+
 Examples:
-"Send 100 XLM to GABC...every week" → {"action":"create_agent","confidence":0.95,"agentIntent":{"name":"Weekly Transfer Agent","strategy":"recurring_payment","templateId":"bill_scheduler","summary":"Sends 100 XLM every 7 days to GABC...","missingFields":[],"strategyConfig":{"amount":100,"recipient":"GABC...","intervalSeconds":604800}}}
+"Send 100 XLM to GABC..." → {"action":"send_xlm","confidence":0.95,"destination":"GABC...","amount":"100"}
 "Alert me when XLM drops below 10 cents" → {"action":"create_agent","confidence":0.88,"agentIntent":{"name":"XLM Price Alert","strategy":"price_alert","templateId":"price_alert","summary":"Monitors XLM/USD price and alerts when it drops below $0.10","missingFields":["alertAction"],"strategyConfig":{"lowerBound":0.10}}}
-"Auto-save 5 XLM daily to my backup wallet" → {"action":"create_agent","confidence":0.92,"agentIntent":{"name":"Daily Savings Sweep","strategy":"savings_sweep","templateId":"savings_sweep","summary":"Transfers 5 XLM every day to your backup wallet for savings","missingFields":["backupWalletAddress"],"strategyConfig":{"amount":5,"intervalSeconds":86400}}}
+"How much XLM do I have?" → {"action":"check_balance","confidence":0.98}
+"Hello!" → {"action":"greet","confidence":0.99}
 
 Return ONLY the JSON object, no markdown, no extra text.`;
 
@@ -90,6 +108,7 @@ Return ONLY the JSON object, no markdown, no extra text.`;
 
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
+      console.error("[AI/PARSE] No JSON found in response:", text);
       return NextResponse.json(
         { 
           error: "I couldn't understand your request. Please describe it more clearly. Example: 'Send 10 XLM every week to my savings wallet' or 'Create an agent to send funds automatically'" 
@@ -98,8 +117,27 @@ Return ONLY the JSON object, no markdown, no extra text.`;
       );
     }
 
-    const parsed = JSON.parse(jsonMatch[0]) as unknown;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(jsonMatch[0]) as unknown;
+    } catch (e) {
+      console.error("[AI/PARSE] JSON parse error:", jsonMatch[0], e);
+      return NextResponse.json(
+        { 
+          error: "Failed to parse AI response. Please try again with a clearer description." 
+        },
+        { status: 422 }
+      );
+    }
+
     const validated = parsedCommandSchema.safeParse(parsed);
+    if (!validated.success) {
+      console.error("[AI/PARSE] Validation error:", JSON.stringify({
+        input,
+        aiResponse: parsed,
+        validationErrors: validated.error.issues
+      }, null, 2));
+    }
 
     if (!validated.success) {
       const issues = validated.error.issues;

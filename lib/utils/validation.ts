@@ -122,7 +122,7 @@ export const parsedCommandSchema = z.object({
   destination: stellarAddressSchema.optional(),
   amount: xlmAmountSchema.optional(),
   confidence: z.number().min(0).max(1).optional(),
-  agentIntent: agentIntentSchema.optional(),
+  agentIntent: agentIntentSchema.nullable().optional(), // Allow null for send_xlm action
 });
 
 export type SendTransactionInput = z.infer<typeof sendTransactionSchema>;

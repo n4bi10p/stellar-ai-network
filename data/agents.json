@@ -34,8 +34,48 @@
     "id": "2b83bd0f-ac84-4157-abda-a0a78964bd90",
     "createdAt": "2026-02-24T12:27:35.383Z",
     "autoExecuteEnabled": true,
-    "nextExecutionAt": "2026-02-24T13:34:02.616Z",
+    "nextExecutionAt": "2026-03-24T17:34:28.598Z",
     "lastExecutionAt": "2026-02-24T12:34:02.616Z",
     "executionCount": 1
+  },
+  {
+    "contractId": "CAGIKMTM5ZGZZLYDHFI3EOI6GTJX7ODAJN2PW4JXNMNXKOFD5FBTQJKB",
+    "owner": "GCBWJPGRPE5DBX7L3UU5NJXR6I4SWXSXNAWBWWKXJLK33LGUM4S4H3OP",
+    "name": "XLM_TO_SAVINGS_ON_DOLLAR_HIKE",
+    "strategy": "price_alert",
+    "templateId": "price_alert",
+    "txHash": "67012f6ba0f38c1706ecf92b7e0889050441edd92e8b6c298bc2260213849424",
+    "strategyConfig": {
+      "recipient": "GAAB35I465TZAUN7KMTJXJXXM2SWD6AVB72ZUPLVYGYSZYUJCUV2JO3R",
+      "upperBound": 5,
+      "lowerBound": 0.05,
+      "alertAmount": 100,
+      "checkIntervalSeconds": 300
+    },
+    "executionMode": "assisted_auto",
+    "reminders": {
+      "channels": {
+        "inApp": true,
+        "email": false,
+        "telegram": false,
+        "discord": false
+      },
+      "digestMode": "instant"
+    },
+    "fullAuto": {
+      "consentAcceptedAt": null,
+      "consentVersion": null,
+      "encryptedSecret": null,
+      "keyStoredAt": null,
+      "keyRevokedAt": null
+    },
+    "id": "b8477517-16f1-4318-8a38-16bfd3f73b2c",
+    "createdAt": "2026-03-24T16:34:07.118Z",
+    "strategyState": {
+      "lastCheckedAt": "2026-03-24T16:34:26.527Z",
+      "lastPriceUsd": 0.166168
+    },
+    "nextExecutionAt": "2026-03-24T16:39:26.527Z",
+    "autoExecuteEnabled": true
   }
 ]
