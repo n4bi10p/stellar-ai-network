@@ -14,6 +14,8 @@ export function useStellar() {
   ): Promise<TransactionResult> {
     setLoading(true);
     try {
+      console.log("[useStellar] Starting XLM send...", { destination, amount });
+      
       // 1. Build unsigned transaction via API
       const buildRes = await fetch("/api/stellar/send", {
         method: "POST",
@@ -27,9 +29,11 @@ export function useStellar() {
       }
 
       const { xdr } = await buildRes.json();
+      console.log("[useStellar] Got unsigned XDR, requesting user signature...");
 
-      // 2. Sign with Freighter
+      // 2. Sign with connected wallet (Albedo, Freighter, Rabet, XBull)
       const signedXdr = await signTx(xdr);
+      console.log("[useStellar] Transaction signed successfully");
 
       // 3. Submit signed transaction
       const submitRes = await fetch("/api/stellar/submit", {
@@ -44,6 +48,7 @@ export function useStellar() {
       }
 
       const result = await submitRes.json();
+      console.log("[useStellar] Transaction submitted:", result);
 
       // 4. Refresh balance
       await refreshBalance();
@@ -55,6 +60,7 @@ export function useStellar() {
       };
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Transaction failed";
+      console.error("[useStellar] Error:", msg);
       return { success: false, error: msg };
     } finally {
       setLoading(false);

@@ -6,12 +6,12 @@ import type { WalletProvider, WalletMeta } from "./types";
 const meta: WalletMeta = {
   id: "xbull",
   name: "XBull Wallet",
-  description: "XBull Stellar Wallet (Mobile & Desktop)",
+  description: "XBull Browser Extension or Web Wallet (Desktop)",
   installUrl: "https://xbull.app",
   icon: "🔐",
-  platforms: ["desktop", "mobile"],
+  platforms: ["desktop"],
   connectionMethod: "extension",
-  badgeLabel: "RECOMMENDED",
+  badgeLabel: "EXTENSION-ONLY",
 };
 
 /** Check if XBull is available */

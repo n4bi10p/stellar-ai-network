@@ -32,6 +32,12 @@ async function withAlbedoTimeout<T>(
 ): Promise<T> {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
   try {
+    // For mobile, force focus on wallet app by logging to console
+    if (isMobileBrowser()) {
+      console.log(`[Albedo] Opening ${action} popup. Please approve in wallet app.`);
+    }
+    
+    console.log(`[Albedo] Timeout set to ${ALBEDO_TIMEOUT_MS}ms for ${action}`);
     return await Promise.race([
       promise,
       new Promise<T>((_, reject) => {
@@ -48,6 +54,7 @@ async function withAlbedoTimeout<T>(
           
           const err = new Error(errorMsg);
           (err as any).isTimeout = true;
+          console.error("[Albedo]", errorMsg);
           reject(err);
         }, ALBEDO_TIMEOUT_MS);
       }),
@@ -67,16 +74,19 @@ export const albedoProvider: WalletProvider = {
 
   async connect(): Promise<string> {
     try {
+      console.log("[Albedo] Initiating connection...");
       const result = await withAlbedoTimeout(
         albedo.publicKey({}),
         "connection",
         0
       );
+      console.log("[Albedo] Connection successful, pubkey:", result.pubkey?.substring(0, 8) + "...");
       if (!result.pubkey) {
         throw new Error("Albedo did not return a public key.");
       }
       return result.pubkey;
     } catch (error: any) {
+      console.error("[Albedo] Connection error:", error?.message || error);
       if (error.isTimeout && isMobileBrowser()) {
         throw new Error(
           "Albedo connection timed out. Make sure you have pop-ups enabled and try again."
@@ -92,6 +102,10 @@ export const albedoProvider: WalletProvider = {
     retryCount: number = 0
   ): Promise<string> {
     try {
+      console.log("[Albedo] Starting signature request...");
+      console.log("[Albedo] Network:", networkPassphrase.includes("Test") ? "testnet" : "public");
+      console.log("[Albedo] XDR length:", xdr.length);
+      
       const result = await withAlbedoTimeout(
         albedo.tx({
           xdr,
@@ -100,11 +114,14 @@ export const albedoProvider: WalletProvider = {
         "signature request",
         retryCount
       );
+      
+      console.log("[Albedo] Signature successful");
       if (!result.signed_envelope_xdr) {
         throw new Error("Albedo did not return a signed transaction.");
       }
       return result.signed_envelope_xdr;
     } catch (error: any) {
+      console.error("[Albedo] Signature error:", error?.message || error);
       if (error.isTimeout && isMobileBrowser() && retryCount === 0) {
         // Suggest retry once
         throw new Error(

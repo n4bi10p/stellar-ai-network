@@ -1,7 +1,7 @@
 // ── Wallet Registry ──
 // Central list of all supported wallet providers.
-// Mobile (iOS/Android): Albedo, XBull
-// Desktop: Freighter, Albedo, Rabet
+// Mobile (iOS/Android): Albedo only (web-friendly)
+// Desktop: Freighter, Albedo, Rabet, XBull (extension/web-based)
 
 import type { WalletProvider, WalletId, WalletPlatform } from "./types";
 import { freighterProvider } from "./freighter";
@@ -26,25 +26,20 @@ function detectPlatform(): WalletPlatform {
 
 /**
  * Get wallet providers filtered by platform
- * Mobile: Albedo, XBull (no Freighter)
- * Desktop: All wallets
+ * Mobile: Albedo (web-friendly)
+ * Desktop: Freighter, Albedo, Rabet, XBull (extension-based)
  */
 export function getWalletProviders(platform?: WalletPlatform): WalletProvider[] {
   const p = platform || detectPlatform();
 
   if (p === "mobile") {
-    // Mobile: only Albedo and XBull
+    // Mobile: only Albedo (XBull is extension/web only, not mobile native)
     return ALL_PROVIDERS.filter((w) =>
-      ["albedo", "xbull"].includes(w.meta.id)
-    ).sort((a, b) => {
-      // Prioritize XBull for mobile
-      if (a.meta.id === "xbull") return -1;
-      if (b.meta.id === "xbull") return 1;
-      return 0;
-    });
+      w.meta.id === "albedo"
+    );
   }
 
-  // Desktop: All providers
+  // Desktop: All providers (extension/desktop based)
   return ALL_PROVIDERS.sort((a) => {
     // Prioritize Freighter on desktop
     return a.meta.id === "freighter" ? -1 : 1;

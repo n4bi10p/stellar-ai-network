@@ -203,7 +203,8 @@ export default function Home() {
           return;
         }
 
-        addMessage("agent", `> Preparing transaction:\n  TO: ${truncateAddress(parsed.destination, 8)}\n  AMOUNT: ${parsed.amount} XLM\n> Waiting for Freighter signature...`);
+        const walletName = activeWallet ? activeWallet.charAt(0).toUpperCase() + activeWallet.slice(1) : 'wallet';
+        addMessage("agent", `> Preparing transaction:\n  TO: ${truncateAddress(parsed.destination, 8)}\n  AMOUNT: ${parsed.amount} XLM\n> Waiting for ${walletName} signature...`);
 
         const result = await sendXLM(parsed.destination, parsed.amount);
         setLastTx(result);
