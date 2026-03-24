@@ -276,14 +276,22 @@ function CreateAgentInner() {
                   <Sparkles className="h-4 w-4 text-accent" />
                   AI_AGENT_SETUP
                 </div>
-                <div className="text-[10px] tracking-wider text-muted">
-                  Describe the automation you want and we&apos;ll prefill the
-                  strategy form for review.
+                <div className="space-y-2">
+                  <div className="text-[10px] tracking-wider text-muted leading-relaxed">
+                    📝 Describe the automation you want in plain English. Be specific about:
+                  </div>
+                  <ul className="space-y-1 text-[9px] tracking-wider text-muted/90 list-disc pl-4">
+                    <li><strong>What:</strong> Send XLM, set a price alert, auto-save, rebalance, or dollar-cost average</li>
+                    <li><strong>Amount:</strong> How many XLM (e.g., "10 XLM", "50 XLM")</li>
+                    <li><strong>Recipient:</strong> Who or where (e.g., "my savings wallet", "GABC123...")</li>
+                    <li><strong>Frequency:</strong> When/how often (e.g., "every Monday", "daily", "weekly")</li>
+                    <li><strong>Conditions:</strong> Any triggers (e.g., "when price drops below $0.10", "if balance exceeds 100 XLM")</li>
+                  </ul>
                 </div>
                 <textarea
                   value={aiPrompt}
                   onChange={(e) => setAiPrompt(e.target.value)}
-                  placeholder='e.g. "Send 10 XLM to my savings wallet every Monday"'
+                  placeholder='Examples: "Send 10 XLM every Monday to my savings wallet" OR "Create a price alert when XLM drops below $0.10" OR "Auto-save 5 XLM daily" OR "Rebalance wallet to 50/50"'
                   disabled={isWorking || txStatus === "success" || aiLoading}
                   rows={4}
                   className="w-full border border-border/40 bg-surface/90 px-4 py-3 text-sm outline-none placeholder:text-muted/40 focus:border-accent/50 disabled:opacity-50"
@@ -304,19 +312,43 @@ function CreateAgentInner() {
                   )}
                 </button>
                 {aiSummary && (
-                  <div className="border border-accent/30 bg-accent/5 px-3 py-3 text-[10px] tracking-wider text-muted">
-                    <div className="text-accent">{">"} AI_SUMMARY</div>
-                    <div className="mt-1">{aiSummary}</div>
+                  <div className="space-y-3 border border-accent/30 bg-accent/5 px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-accent" />
+                      <span className="text-[10px] font-semibold tracking-widest text-accent">AI_ANALYSIS</span>
+                    </div>
+                    <div className="text-[10px] tracking-wider text-muted leading-relaxed">{aiSummary}</div>
                     {aiMissingFields.length > 0 && (
-                      <div className="mt-2 text-amber-300">
-                        Missing fields: {aiMissingFields.join(", ")}
+                      <div className="border-t border-accent/20 pt-2">
+                        <div className="mb-2 text-[9px] font-semibold tracking-widest text-amber-300">
+                          ⚠️ MISSING FIELDS (please provide):
+                        </div>
+                        <ul className="space-y-1 text-[9px] tracking-wider text-amber-300/90 list-disc pl-4">
+                          {aiMissingFields.map((field) => (
+                            <li key={field}>{field}</li>
+                          ))}
+                        </ul>
                       </div>
                     )}
                   </div>
                 )}
                 {aiError && (
-                  <div className="border border-red-500/40 bg-red-500/5 px-3 py-3 text-[10px] tracking-wider text-red-400">
-                    &gt; {aiError}
+                  <div className="space-y-3 border border-red-500/40 bg-red-500/5 px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <XCircle className="h-4 w-4 text-red-400" />
+                      <span className="text-[10px] font-semibold tracking-widest text-red-400">AI COULD NOT UNDERSTAND</span>
+                    </div>
+                    <div className="text-[10px] tracking-wider text-red-300">{aiError}</div>
+                    <div className="border-t border-red-500/20 pt-2">
+                      <div className="mb-2 text-[9px] font-semibold tracking-widest text-amber-300">💡 HELPFUL EXAMPLES:</div>
+                      <ul className="space-y-1 text-[9px] tracking-wider text-muted/90 list-disc pl-4">
+                        <li>"Send 10 XLM every Monday to my savings wallet"</li>
+                        <li>"Create a price alert when XLM drops below $0.10"</li>
+                        <li>"Auto-save 5 XLM daily to my backup account"</li>
+                        <li>"DCA 2 XLM every day for dollar-cost averaging"</li>
+                        <li>"Rebalance my wallet to 50% XLM and 50% other assets"</li>
+                      </ul>
+                    </div>
                   </div>
                 )}
               </div>
@@ -768,21 +800,32 @@ function CreateAgentInner() {
 
               {/* Error */}
               {txStatus === "failed" && errorMsg && (
-                <div className="space-y-2 border border-red-500/40 bg-red-500/5 px-4 py-3">
+                <div className="space-y-3 border border-red-500/40 bg-red-500/5 px-4 py-3">
                   <div className="flex items-center gap-2 text-red-400">
                     <XCircle className="h-4 w-4" />
                     <span className="text-xs font-semibold tracking-widest">DEPLOYMENT FAILED</span>
                   </div>
-                  <div className="text-[10px] tracking-wider text-red-400">&gt; {errorMsg}</div>
+                  <div className="border-l-2 border-red-500/40 pl-3">
+                    <div className="text-[10px] tracking-wider text-red-300 leading-relaxed">{errorMsg}</div>
+                  </div>
+                  <div className="border-t border-red-500/20 pt-2">
+                    <div className="text-[9px] font-semibold tracking-widest text-amber-300 mb-2">TROUBLESHOOTING:</div>
+                    <ul className="space-y-1 text-[9px] tracking-wider text-muted/90">
+                      <li>✓ Check all required fields are correctly filled</li>
+                      <li>✓ Verify wallet addresses start with 'G' (56 characters)</li>
+                      <li>✓ Ensure amounts are positive numbers</li>
+                      <li>✓ Check your wallet has sufficient balance for deployment</li>
+                    </ul>
+                  </div>
                   {txHash && (
                     <a
                       href={txExplorerUrl(txHash)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-1 text-[10px] text-accent underline"
+                      className="flex items-center gap-1 text-[10px] text-accent underline pt-2 border-t border-red-500/20"
                     >
                       <ExternalLink className="h-3 w-3" />
-                      View failed tx on Explorer
+                      View transaction on Stellar Explorer
                     </a>
                   )}
                 </div>

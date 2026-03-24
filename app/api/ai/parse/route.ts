@@ -11,7 +11,16 @@ export async function POST(request: NextRequest) {
 
     if (!input || typeof input !== "string") {
       return NextResponse.json(
-        { error: "Missing 'input' field" },
+        { error: "Please provide a description of what you want to automate." },
+        { status: 400 }
+      );
+    }
+
+    if (input.trim().length < 5) {
+      return NextResponse.json(
+        { 
+          error: "Your description is too short. Please provide more details about what automation you want to create. For example: 'Send 10 XLM every Monday to my savings wallet' or 'Alert me if XLM price drops below $0.10'" 
+        },
         { status: 400 }
       );
     }
@@ -25,68 +34,56 @@ export async function POST(request: NextRequest) {
 
     if (!process.env.GEMINI_API_KEY) {
       return NextResponse.json(
-        { error: "GEMINI_API_KEY not configured" },
+        { error: "AI service is not configured. Please contact support." },
         { status: 500 }
       );
     }
 
     const prompt = `You are an intent classifier and agent-config extractor for the Stellar AI Agent Network.
-Classify the user command into exactly one action.
+Your job is to understand what automation the user wants to create and extract the necessary configuration.
+
+Supported agent types:
+1. "auto_rebalance" - Rebalance wallet between assets
+2. "recurring_payment" - Send XLM on a schedule (daily, weekly, monthly)
+3. "price_alert" - Alert or execute action when price changes
+4. "dca_bot" - Dollar-cost averaging: send fixed amounts regularly
+5. "savings_sweep" - Automatically move funds to savings
 
 Rules:
-- Use "greet" for greetings or small talk (hello/hi/hey/etc).
-- Use "check_balance" ONLY when the user explicitly asks about balance, funds, wallet amount, or holdings.
-- Use "create_agent" when the user wants to deploy/create/schedule/automate an agent or workflow.
-- Use "send_xlm" only for direct transfer/payment intent and include destination + amount when available.
-- Never map a greeting to "check_balance".
-- For "create_agent", infer the best strategy from this supported list only:
-  - "auto_rebalance"
-  - "recurring_payment"
-  - "price_alert"
-  - "dca_bot"
-  - "savings_sweep"
-- Only return fields that match the selected strategy config.
-- For time phrases, convert to seconds.
-- If important data is missing, still choose the best strategy and list missing fields in "missingFields".
-- Use one of these templateIds when possible:
-  - "auto_rebalance"
-  - "bill_scheduler"
-  - "price_alert"
-  - "dca_bot"
-  - "savings_sweep"
+- Use "greet" for greetings or small talk.
+- Use "check_balance" ONLY when asked about balance, funds, holdings, or "how much".
+- Use "create_agent" when user wants to deploy/automate/schedule something.
+- Use "send_xlm" only for immediate direct transfers.
+- For "create_agent", extract: strategy, name, summary, missing fields, and config.
+- For time phrases: 1 hour=3600s, 1 day=86400s, 1 week=604800s, 1 month≈2592000s.
+- If fields are missing, list them in "missingFields" but still try to extract what you can.
+- Match to the best strategy from the supported list above.
+- Generate a helpful summary of what the agent will do.
 
-User command: "${input}"
+User input: "${input}"
 
-Return ONLY valid JSON with this structure:
+Return ONLY valid JSON:
 {
   "action": "send_xlm" | "check_balance" | "create_agent" | "greet",
-  "destination": "GXXX..." (if sending — must be a full 56-character Stellar address starting with G),
-  "amount": "100" (if sending — as a string number),
   "confidence": 0.0,
   "agentIntent": {
-    "name": "Weekly Savings Agent",
-    "strategy": "recurring_payment",
-    "templateId": "bill_scheduler",
-    "summary": "Sends 10 XLM every week to a savings wallet.",
-    "missingFields": ["recipient"],
+    "name": "Agent Name",
+    "strategy": "recurring_payment" | "auto_rebalance" | "price_alert" | "dca_bot" | "savings_sweep",
+    "templateId": "auto_rebalance" | "bill_scheduler" | "price_alert" | "dca_bot" | "savings_sweep",
+    "summary": "Clear explanation of what this agent does",
+    "missingFields": ["field1", "field2"],
     "strategyConfig": {
-      "recipient": "G...",
-      "amount": 10,
-      "intervalSeconds": 604800,
-      "maxExecutions": 52
+      "configKey": "value"
     }
   }
 }
 
 Examples:
-"Send 10 XLM to GABC...WXYZ" → {"action":"send_xlm","destination":"GABC...WXYZ","amount":"10","confidence":0.97}
-"What's my balance?" → {"action":"check_balance","confidence":0.98}
-"Create an agent" → {"action":"create_agent","confidence":0.62,"agentIntent":{"strategy":"recurring_payment","templateId":"bill_scheduler","missingFields":["recipient","amount","intervalSeconds"],"strategyConfig":{"amount":10,"intervalSeconds":604800,"maxExecutions":52}}}
-"Send 10 XLM to my savings every Monday" → {"action":"create_agent","confidence":0.93,"agentIntent":{"name":"Weekly Savings Agent","strategy":"recurring_payment","templateId":"bill_scheduler","summary":"Sends 10 XLM every Monday to the savings wallet.","missingFields":["recipient"],"strategyConfig":{"recipient":"GBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB","amount":10,"intervalSeconds":604800,"maxExecutions":52}}}
-"Alert me if XLM drops below 0.09 and send 25 XLM to GDEF..." → {"action":"create_agent","confidence":0.9,"agentIntent":{"strategy":"price_alert","templateId":"price_alert","summary":"Sends 25 XLM when XLM/USD drops below 0.09.","missingFields":[],"strategyConfig":{"recipient":"GCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC","lowerBound":0.09,"alertAmount":25,"checkIntervalSeconds":300}}}
-"hello" → {"action":"greet","confidence":0.99}
+"Send 100 XLM to GABC...every week" → {"action":"create_agent","confidence":0.95,"agentIntent":{"name":"Weekly Transfer Agent","strategy":"recurring_payment","templateId":"bill_scheduler","summary":"Sends 100 XLM every 7 days to GABC...","missingFields":[],"strategyConfig":{"amount":100,"recipient":"GABC...","intervalSeconds":604800}}}
+"Alert me when XLM drops below 10 cents" → {"action":"create_agent","confidence":0.88,"agentIntent":{"name":"XLM Price Alert","strategy":"price_alert","templateId":"price_alert","summary":"Monitors XLM/USD price and alerts when it drops below $0.10","missingFields":["alertAction"],"strategyConfig":{"lowerBound":0.10}}}
+"Auto-save 5 XLM daily to my backup wallet" → {"action":"create_agent","confidence":0.92,"agentIntent":{"name":"Daily Savings Sweep","strategy":"savings_sweep","templateId":"savings_sweep","summary":"Transfers 5 XLM every day to your backup wallet for savings","missingFields":["backupWalletAddress"],"strategyConfig":{"amount":5,"intervalSeconds":86400}}}
 
-Return ONLY the JSON object, no markdown, no explanation.`;
+Return ONLY the JSON object, no markdown, no extra text.`;
 
     const result = await model.generateContent(prompt);
     const text = result.response.text();
@@ -94,7 +91,9 @@ Return ONLY the JSON object, no markdown, no explanation.`;
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       return NextResponse.json(
-        { error: "Could not parse AI response" },
+        { 
+          error: "I couldn't understand your request. Please describe it more clearly. Example: 'Send 10 XLM every week to my savings wallet' or 'Create an agent to send funds automatically'" 
+        },
         { status: 422 }
       );
     }
@@ -103,8 +102,29 @@ Return ONLY the JSON object, no markdown, no explanation.`;
     const validated = parsedCommandSchema.safeParse(parsed);
 
     if (!validated.success) {
+      const issues = validated.error.issues;
+      const firstIssue = issues[0];
+      
+      if (firstIssue) {
+        const fieldPath = firstIssue.path.join(".");
+        let errorMsg = `Invalid field: ${fieldPath}`;
+        
+        if (fieldPath.includes("strategy")) {
+          errorMsg = `Please choose a valid strategy type. Supported: recurring_payment, auto_rebalance, price_alert, dca_bot, or savings_sweep`;
+        } else if (fieldPath.includes("amount")) {
+          errorMsg = "Please provide a valid amount in XLM for the payment or transfer.";
+        } else if (fieldPath.includes("recipient") || fieldPath.includes("destination")) {
+          errorMsg = "Please provide a valid Stellar wallet address (starts with G and is 56 characters long).";
+        }
+        
+        return NextResponse.json(
+          { error: errorMsg },
+          { status: 422 }
+        );
+      }
+
       return NextResponse.json(
-        { error: "AI response did not match the expected schema" },
+        { error: "The request configuration is incomplete. Please provide more details." },
         { status: 422 }
       );
     }
@@ -112,7 +132,7 @@ Return ONLY the JSON object, no markdown, no explanation.`;
     return NextResponse.json({ parsed: validated.data });
   } catch (error: unknown) {
     console.error("[AI/PARSE] Error:", error);
-    const msg = error instanceof Error ? error.message : "AI parsing failed";
+    const msg = error instanceof Error ? error.message : "Failed to process your request. Please try again with a clearer description.";
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
