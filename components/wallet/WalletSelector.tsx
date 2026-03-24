@@ -99,8 +99,7 @@ export function WalletSelector({
               const disabled =
                 loading ||
                 (!available &&
-                  provider.meta.id !== "albedo" &&
-                  provider.meta.id !== "walletconnect");
+                  provider.meta.id !== "albedo");
 
               return (
                 <button
