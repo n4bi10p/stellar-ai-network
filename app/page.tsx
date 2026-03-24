@@ -242,7 +242,7 @@ export default function Home() {
   return (
     <HudShell>
       {/* ─── Center Content ─── */}
-      <main className="hud-grid flex min-w-0 flex-1 flex-col">
+      <main className="hud-grid flex min-w-0 flex-1 flex-col w-full max-w-full overflow-hidden">
         {/* Terminal prompt bar */}
         <div className="flex flex-col gap-2 border-b border-border/40 bg-surface/50 px-3 py-2 text-xs sm:flex-row sm:items-center sm:justify-between sm:px-4">
           <span className="text-muted"></span>
@@ -280,14 +280,14 @@ export default function Home() {
         </div>
 
         {/* Chat / Agent Conversation */}
-        <div ref={scrollRef} className="flex-1 space-y-5 overflow-y-auto p-3 sm:p-5">
+        <div ref={scrollRef} className="flex-1 space-y-2 sm:space-y-4 overflow-y-auto overflow-x-hidden p-1 sm:p-3 min-w-0 w-full">
           {/* Welcome message */}
           {messages.length === 0 && (
             <div>
               <div className="text-[10px] tracking-wider text-accent">
                 system <span className="text-muted">@ boot</span>
               </div>
-              <div className="mt-2 border border-border/40 bg-surface/80 px-4 py-3 text-sm leading-relaxed">
+              <div className="mt-1 border border-border/40 bg-surface/80 px-2 py-2 text-[11px] sm:text-sm leading-relaxed max-w-[calc(100vw-24px)] sm:max-w-2xl">
                 &gt; Welcome to <strong>Stellar AI Agent Network</strong>.
                 <br />
                 &gt; {connected
@@ -311,7 +311,7 @@ export default function Home() {
               <div className="text-[10px] tracking-wider text-red-400">
                 system <span className="text-muted">@ {timestamp()}</span>
               </div>
-              <div className="mt-2 border border-red-500/30 bg-surface/80 px-4 py-2 text-sm text-red-400">
+              <div className="mt-1 border border-red-500/30 bg-surface/80 px-2 py-2 text-[11px] sm:text-sm text-red-400 max-w-[calc(100vw-24px)] sm:max-w-2xl">
                 &gt; [ERROR] {walletError}
               </div>
             </div>
@@ -338,10 +338,12 @@ export default function Home() {
                 <span className="text-muted">@ {msg.timestamp}</span>
               </div>
               <div
-                className={`mt-2 border px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] ${
+                className={`mt-1 border px-2 py-2 text-[12px] sm:text-[13px] leading-relaxed whitespace-pre-wrap break-all word-break: break-word overflow-hidden ${
                   msg.role === "user"
-                    ? "max-w-lg border-border/40 bg-surface-2/80"
-                    : msg.txResult && !msg.txResult.success
+                    ? "max-w-[calc(100vw-24px)] sm:max-w-lg border-border/40 bg-surface-2/80"
+                    : "max-w-[calc(100vw-24px)] sm:max-w-2xl"
+                } ${
+                  msg.txResult && !msg.txResult.success
                     ? "border-red-500/30 bg-surface/80"
                     : "border-border/40 bg-surface/80"
                 }`}
@@ -369,7 +371,7 @@ export default function Home() {
               <div className="text-[10px] tracking-wider text-accent">
                 agent_alpha <span className="text-muted">@ {timestamp()}</span>
               </div>
-              <div className="mt-2 border border-border/40 bg-surface/80 px-4 py-3 text-sm">
+              <div className="mt-1 border border-border/40 bg-surface/80 px-2 py-2 text-[11px] sm:text-sm max-w-[calc(100vw-24px)] sm:max-w-2xl">
                 &gt; Processing
                 <span className="inline-block animate-pulse">...</span>
               </div>
@@ -380,37 +382,37 @@ export default function Home() {
         {/* Command Input */}
         <form
           onSubmit={handleSubmit}
-          className="border-t border-border/40 bg-surface/50 px-5 py-3"
+          className="border-t border-border/40 bg-surface/50 px-1 sm:px-4 py-2 w-full overflow-hidden"
         >
-          <div className="flex items-center gap-3">
-            <span className="text-accent">&gt;</span>
+          <div className="flex items-center gap-1 sm:gap-2 min-w-0 w-full">
+            <span className="text-accent flex-shrink-0 text-[12px] sm:text-base">&gt;</span>
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder={
                 connected
-                  ? "Enter command or message..."
-                  : "Connect wallet first..."
+                  ? "cmd..."
+                  : "connect wallet"
               }
               disabled={isProcessing}
-              className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted/60 disabled:opacity-50"
+              className="flex-1 min-w-0 bg-transparent text-[11px] sm:text-sm outline-none placeholder:text-muted/60 disabled:opacity-50 overflow-x-auto pr-1"
             />
             <button
               type="button"
-              className="p-1.5 text-muted transition-colors hover:text-foreground"
+              className="p-1 flex-shrink-0 text-muted transition-colors hover:text-foreground"
             >
-              <Mic className="h-4 w-4" />
+              <Mic className="h-3 w-3 sm:h-4 sm:w-4" />
             </button>
             <button
               type="submit"
               disabled={isProcessing || !input.trim()}
-              className="rounded border border-border/60 bg-surface-2 p-1.5 text-muted transition-colors hover:text-foreground disabled:opacity-30"
+              className="rounded border border-border/60 bg-surface-2 p-1 flex-shrink-0 text-muted transition-colors hover:text-foreground disabled:opacity-30"
             >
-              <ArrowUp className="h-4 w-4" />
+              <ArrowUp className="h-3 w-3 sm:h-4 sm:w-4" />
             </button>
           </div>
-          <div className="mt-2 flex items-center justify-between text-[10px] tracking-wider text-muted">
+          <div className="mt-1 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between text-[9px] sm:text-[10px] tracking-wider text-muted">
             <span>
               STATUS:{" "}
               <span
@@ -421,7 +423,7 @@ export default function Home() {
                 {isProcessing ? "PROCESSING" : "LISTENING"}
               </span>
             </span>
-            <span>MODE: INTERACTIVE</span>
+            <span className="hidden sm:inline">MODE: INTERACTIVE</span>
           </div>
         </form>
       </main>
