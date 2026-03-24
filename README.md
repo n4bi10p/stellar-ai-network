@@ -218,16 +218,20 @@ Stellar AI Agent Network is a platform where users interact with the Stellar blo
 
 ## Setup Instructions
 
-### Prerequisites
+### Quick Start (Localhost)
+
+#### Prerequisites
 
 - **Node.js** 20+ ([download](https://nodejs.org))
-- **Wallet** — at least one of: [Freighter](https://freighter.app), [Albedo](https://albedo.link), or [Rabet](https://rabet.io)
+- **Wallet** — at least one of:
+  - Desktop: [Freighter](https://freighter.app), [Albedo](https://albedo.link), [Rabet](https://rabet.io)
+  - Mobile: [Albedo](https://albedo.link), [XBull](https://xbull.app)
 - **Gemini API Key** — free at [aistudio.google.com](https://aistudio.google.com/apikey)
 - **Testnet XLM** — fund your wallet at [friendbot](https://friendbot.stellar.org/?addr=YOUR_ADDRESS)
+- **PostgreSQL** (optional, for local DB) — or use Supabase
 - **Rust** (optional, for contract development) — [rustup.rs](https://rustup.rs)
-- **Stellar CLI** (optional) — `cargo install --locked stellar-cli`
 
-### Installation
+#### Installation
 
 ```bash
 # Clone the repository
@@ -241,9 +245,9 @@ npm install
 cp .env.example .env.local
 ```
 
-### Environment Variables
+#### Environment Variables (Local Development)
 
-Edit `.env.local` and add your Gemini API key:
+For local development, you can use JSON store (no database needed):
 
 ```env
 # ── Gemini AI ──
@@ -260,37 +264,16 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 # ── Soroban Contract (already deployed) ──
 NEXT_PUBLIC_AGENT_CONTRACT_ID=CAGIKMTM5ZGZZLYDHFI3EOI6GTJX7ODAJN2PW4JXNMNXKOFD5FBTQJKB
 
-# ── Agent Store Backend ──
-# json | redis | prisma
-AGENT_STORE_BACKEND=json
+# ── Agent Store Backend (local development) ──
+AGENT_STORE_BACKEND=json  # No database needed locally
 
-# PostgreSQL / Prisma - required when AGENT_STORE_BACKEND=prisma
-DATABASE_URL=
-
-# Redis (Upstash REST) - required when AGENT_STORE_BACKEND=redis
-UPSTASH_REDIS_REST_URL=
-UPSTASH_REDIS_REST_TOKEN=
-AGENTS_STORE_REDIS_KEY=agents:all
-
-# ── Cron + Automation (Level 4) ──
-CRON_SECRET=
-CRON_MAX_AGENTS_PER_RUN=25
+# Cron + Reminders (optional for local dev)
+CRON_SECRET=dev-secret
 ENABLE_ASSISTED_AUTO=true
 ENABLE_FULL_AUTO=false
-
-# ── Reminder Providers (Level 4) ──
-RESEND_API_KEY=
-REMINDER_FROM_EMAIL=
-TELEGRAM_BOT_TOKEN=
-
-# ── Full-Auto Encryption Key (Level 4) ──
-# Base64-encoded 32-byte key for AES-256-GCM
-AUTO_SIGNING_MASTER_KEY=
 ```
 
-For Prisma CLI commands, also create a local `.env` file with the same `DATABASE_URL`, since `npx prisma ...` reads `.env` directly.
-
-### Run Development Server
+#### Run Development Server
 
 ```bash
 npm run dev
@@ -298,12 +281,68 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-### Build for Production
+---
+
+### Production Deployment (Vercel + Supabase)
+
+> 📖 **See [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)** for complete step-by-step instructions.
+
+#### Quick Summary
+
+1. **Create Supabase project**: [supabase.com](https://supabase.com)
+2. **Run migrations**:
+   ```bash
+   DATABASE_URL="postgresql://..." npx prisma migrate deploy
+   ```
+3. **Set Vercel environment variables**:
+   - `DATABASE_URL` — Supabase connection string
+   - `AGENT_STORE_BACKEND=prisma`
+   - `NEXT_PUBLIC_SUPABASE_URL` — Supabase project URL
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` — Supabase anon key
+   - `NEXT_PUBLIC_APP_URL=https://your-vercel-domain.vercel.app`
+   - All other vars from [.env.example](./.env.example)
+
+4. **Deploy**: Push to GitHub → Vercel auto-deploys
+
+#### Why Supabase for Production?
+
+| Feature | JSON | Redis | Supabase (PostgreSQL) |
+|---------|------|-------|----------------------|
+| Multi-user support | ❌ | ⚠️ | ✅ |
+| Free tier for 50 users | ✅ | ⚠️ | ✅ 500MB |
+| Analytics tracking | ❌ | ❌ | ✅ |
+| Runs on Vercel | ✅ | ❌ | ✅ |
+| Automatic backups | ❌ | ❌ | ✅ |
+| SQL queries | ❌ | ❌ | ✅ |
+
+---
+
+### Test Locally First
+
+Before deploying, test the full flow:
 
 ```bash
-npm run build
-npm start
+# 1. Start dev server
+npm run dev
+
+# 2. Open http://localhost:3000
+
+# 3. Test wallet connection:
+#    - Click "Connect Wallet"
+#    - Choose Albedo or Freighter
+#    - Approve on wallet
+
+# 4. Test agent creation:
+#    - Navigate to /agents/create
+#    - Type natural language: "Send 10 XLM weekly"
+#    - AI prefills the form
+#    - Click Deploy
+
+# 5. Run tests
+npm test
 ```
+
+---
 
 ### Run Tests
 

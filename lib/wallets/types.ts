@@ -1,7 +1,7 @@
 // ── Multi-Wallet Provider Interface ──
 // Each wallet adapter implements this contract.
 
-export type WalletId = "freighter" | "albedo" | "rabet" | "walletconnect";
+export type WalletId = "freighter" | "albedo" | "rabet" | "xbull";
 export type WalletPlatform = "desktop" | "mobile";
 export type WalletConnectionMethod = "extension" | "popup" | "walletconnect";
 

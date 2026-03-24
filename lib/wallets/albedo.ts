@@ -1,5 +1,6 @@
 // ── Albedo Wallet Adapter ──
 // Albedo is a web-based Stellar wallet that communicates via popups.
+// Mobile: Recommended for iOS/Android
 // SDK: @albedo-link/intent
 
 import albedo from "@albedo-link/intent";
@@ -8,31 +9,46 @@ import type { WalletProvider, WalletMeta } from "./types";
 const meta: WalletMeta = {
   id: "albedo",
   name: "Albedo",
-  description: "Web-based Stellar signer — no extension needed",
+  description: "Mobile-friendly Stellar signer — no extension needed",
   installUrl: "https://albedo.link/",
   icon: "🌐",
   platforms: ["desktop", "mobile"],
   connectionMethod: "popup",
+  badgeLabel: "RECOMMENDED FOR MOBILE",
 };
-
-const ALBEDO_TIMEOUT_MS = 15_000;
 
 function isMobileBrowser(): boolean {
   if (typeof navigator === "undefined") return false;
   return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 }
 
-async function withAlbedoTimeout<T>(promise: Promise<T>, action: string): Promise<T> {
+// Mobile gets more time since it's going through popup flow
+const ALBEDO_TIMEOUT_MS = isMobileBrowser() ? 20_000 : 15_000;
+
+async function withAlbedoTimeout<T>(
+  promise: Promise<T>,
+  action: string,
+  retryCount: number = 0
+): Promise<T> {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([
       promise,
       new Promise<T>((_, reject) => {
         timeoutId = setTimeout(() => {
-          const suffix = isMobileBrowser()
-            ? " Albedo uses a popup flow on mobile, so open the app in Safari and allow popups."
-            : "";
-          reject(new Error(`Albedo ${action} timed out.${suffix}`));
+          let errorMsg = `Albedo ${action} timed out.`;
+          
+          if (isMobileBrowser()) {
+            if (retryCount === 0) {
+              errorMsg += " Check that Albedo popup opened. If not, try again.";
+            } else {
+              errorMsg += " The request may still be pending. Check your wallet app.";
+            }
+          }
+          
+          const err = new Error(errorMsg);
+          (err as any).isTimeout = true;
+          reject(err);
         }, ALBEDO_TIMEOUT_MS);
       }),
     ]);
@@ -50,30 +66,52 @@ export const albedoProvider: WalletProvider = {
   },
 
   async connect(): Promise<string> {
-    const result = await withAlbedoTimeout(
-      albedo.publicKey({}),
-      "connection"
-    );
-    if (!result.pubkey) {
-      throw new Error("Albedo did not return a public key.");
+    try {
+      const result = await withAlbedoTimeout(
+        albedo.publicKey({}),
+        "connection",
+        0
+      );
+      if (!result.pubkey) {
+        throw new Error("Albedo did not return a public key.");
+      }
+      return result.pubkey;
+    } catch (error: any) {
+      if (error.isTimeout && isMobileBrowser()) {
+        throw new Error(
+          "Albedo connection timed out. Make sure you have pop-ups enabled and try again."
+        );
+      }
+      throw error;
     }
-    return result.pubkey;
   },
 
   async signTransaction(
     xdr: string,
-    networkPassphrase: string
+    networkPassphrase: string,
+    retryCount: number = 0
   ): Promise<string> {
-    const result = await withAlbedoTimeout(
-      albedo.tx({
-        xdr,
-        network: networkPassphrase.includes("Test") ? "testnet" : "public",
-      }),
-      "signature request"
-    );
-    if (!result.signed_envelope_xdr) {
-      throw new Error("Albedo did not return a signed transaction.");
+    try {
+      const result = await withAlbedoTimeout(
+        albedo.tx({
+          xdr,
+          network: networkPassphrase.includes("Test") ? "testnet" : "public",
+        }),
+        "signature request",
+        retryCount
+      );
+      if (!result.signed_envelope_xdr) {
+        throw new Error("Albedo did not return a signed transaction.");
+      }
+      return result.signed_envelope_xdr;
+    } catch (error: any) {
+      if (error.isTimeout && isMobileBrowser() && retryCount === 0) {
+        // Suggest retry once
+        throw new Error(
+          "Albedo signature took too long. Please check your wallet app and try submitting again."
+        );
+      }
+      throw error;
     }
-    return result.signed_envelope_xdr;
   },
 };

@@ -7,10 +7,32 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ── User / Account Management ──
+model User {
+  id              String    @id @default(cuid())
+  walletAddress   String    @unique
+  email           String?   @unique
+  displayName     String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  lastSigninAt    DateTime?
+  
+  // Relations
+  agents          Agent[]
+  userEvents      UserEvent[]
+  executionEvents ExecutionEvent[]
+
+  @@index([walletAddress])
+  @@index([email])
+  @@index([createdAt])
+}
+
+// ── Agent Management ──
 model Agent {
   id                String          @id
+  userId            String?         // Link to User if authenticated
   contractId        String
-  owner             String
+  owner             String          // Wallet address
   name              String
   strategy          String
   templateId        String?
@@ -25,15 +47,57 @@ model Agent {
   nextExecutionAt   DateTime?
   executionCount    Int?
   fullAuto          Json?
+  
+  // Relations
+  user              User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
   executionLogs     ExecutionLog[]
   feedbackEvents    FeedbackEvent[]
   templateUsages    TemplateUsage[]
+  executionEvents   ExecutionEvent[]
 
+  @@index([userId, createdAt])
   @@index([owner, createdAt])
   @@index([strategy])
   @@index([contractId])
 }
 
+// ── Analytics / Event Tracking ──
+model UserEvent {
+  id          String   @id @default(cuid())
+  userId      String
+  eventName   String    // 'agent_created', 'transaction_executed', 'wallet_connected', etc.
+  eventData   Json?     // { agent_id, strategy, status, tx_hash, ... }
+  createdAt   DateTime  @default(now())
+  
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, eventName, createdAt])
+  @@index([eventName, createdAt])
+  @@index([createdAt])
+}
+
+// Detailed execution event tracking
+model ExecutionEvent {
+  id          String    @id @default(cuid())
+  userId      String
+  agentId     String
+  status      String    // 'pending', 'success', 'failed'
+  txHash      String?
+  successRate Float?    // Success percentage if batch
+  errorMsg    String?
+  metadata    Json?
+  createdAt   DateTime  @default(now())
+  
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agent       Agent     @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([agentId, createdAt])
+  @@index([status, createdAt])
+  @@index([createdAt])
+}
+
+// Legacy execution logs (kept for backwards compatibility)
 model ExecutionLog {
   id            String   @id @default(cuid())
   agentId       String
@@ -44,12 +108,14 @@ model ExecutionLog {
   failureReason String?
   metadata      Json?
   createdAt     DateTime @default(now())
+  
   agent         Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
 
   @@index([agentId, createdAt])
   @@index([success, createdAt])
 }
 
+// Feedback tracking
 model FeedbackEvent {
   id         String   @id @default(cuid())
   agentId     String?
@@ -65,6 +131,7 @@ model FeedbackEvent {
   @@index([type, createdAt])
 }
 
+// Template usage tracking
 model TemplateUsage {
   id         String   @id @default(cuid())
   agentId     String?

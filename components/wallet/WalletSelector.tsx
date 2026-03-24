@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Wallet, X, Loader2, ExternalLink } from "lucide-react";
 import { useWallet } from "@/lib/hooks/useWallet";
-import { WALLET_PROVIDERS } from "@/lib/wallets";
+import { getWalletProviders } from "@/lib/wallets";
 import type { WalletId, WalletPlatform, WalletProvider } from "@/lib/wallets/types";
 
 function detectPlatform(): WalletPlatform {
@@ -14,7 +14,8 @@ function detectPlatform(): WalletPlatform {
 
 /**
  * HUD-styled wallet selector modal.
- * Shows available wallets & lets the user pick one to connect.
+ * Mobile (iOS/Android): Shows Albedo, XBull
+ * Desktop: Shows Freighter, Albedo, Rabet
  */
 export function WalletSelector({
   open,
@@ -50,31 +51,11 @@ export function WalletSelector({
 
   if (!open) return null;
 
-  const visibleProviders =
-    platform === "mobile"
-      ? WALLET_PROVIDERS.filter(
-          (provider) =>
-            provider.meta.connectionMethod === "walletconnect" ||
-            provider.meta.platforms.includes("mobile")
-        )
-      : WALLET_PROVIDERS;
+  // Get platform-appropriate wallet providers
+  const visibleProviders = getWalletProviders(platform);
 
-  const sortedProviders = [...visibleProviders].sort((a, b) => {
-    const aPrimary = a.meta.platforms.includes(platform);
-    const bPrimary = b.meta.platforms.includes(platform);
-    if (aPrimary !== bPrimary) return aPrimary ? -1 : 1;
-
-    if (platform === "mobile") {
-      if (a.meta.connectionMethod === "walletconnect" && b.meta.connectionMethod !== "walletconnect") {
-        return -1;
-      }
-      if (b.meta.connectionMethod === "walletconnect" && a.meta.connectionMethod !== "walletconnect") {
-        return 1;
-      }
-    }
-
-    return 0;
-  });
+  // Providers are already sorted by getWalletProviders
+  const sortedProviders = visibleProviders;
 
   async function handleSelect(id: WalletId) {
     setConnectingId(id);
