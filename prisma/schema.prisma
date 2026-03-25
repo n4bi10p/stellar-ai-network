@@ -9,12 +9,11 @@ datasource db {
 
 // ── User / Account Management ──
 model User {
-  id              String    @id @default(cuid())
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   walletAddress   String    @unique
   email           String?   @unique
   displayName     String?
   createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
   lastSigninAt    DateTime?
   
   // Relations
@@ -30,7 +29,7 @@ model User {
 // ── Agent Management ──
 model Agent {
   id                String          @id
-  userId            String?         // Link to User if authenticated
+  userId            String?         @db.Uuid // Link to User if authenticated
   contractId        String
   owner             String          // Wallet address
   name              String
@@ -64,7 +63,7 @@ model Agent {
 // ── Analytics / Event Tracking ──
 model UserEvent {
   id          String   @id @default(cuid())
-  userId      String
+  userId      String   @db.Uuid
   eventName   String    // 'agent_created', 'transaction_executed', 'wallet_connected', etc.
   eventData   Json?     // { agent_id, strategy, status, tx_hash, ... }
   createdAt   DateTime  @default(now())
@@ -79,7 +78,7 @@ model UserEvent {
 // Detailed execution event tracking
 model ExecutionEvent {
   id          String    @id @default(cuid())
-  userId      String
+  userId      String    @db.Uuid
   agentId     String
   status      String    // 'pending', 'success', 'failed'
   txHash      String?

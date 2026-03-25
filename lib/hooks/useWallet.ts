@@ -114,6 +114,18 @@ export const useWallet = create<WalletStore>((set, get) => ({
       console.log(
         `[WALLET] Connected via ${provider.meta.name}: ${address.slice(0, 8)}...`
       );
+
+      // Track wallet connection event
+      try {
+        await fetch("/api/internal/track-wallet", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ walletAddress: address }),
+        });
+      } catch (trackErr) {
+        console.warn("[WALLET] Failed to track wallet connection:", trackErr);
+        // Don't fail wallet connection if tracking fails
+      }
     } catch (err) {
       const msg = getWalletErrorMessage(err);
       set({ loading: false, error: msg });
