@@ -8,6 +8,7 @@ import {
   Users,
   Store,
   BarChart3,
+  Activity,
   Settings,
   Menu,
   X,
@@ -22,6 +23,7 @@ const navItems = [
   { label: "./agents", href: "/agents", icon: Users },
   { label: "./marketplace", href: "/marketplace", icon: Store },
   { label: "./analytics", href: "/analytics", icon: BarChart3 },
+  { label: "./metrics", href: "/dashboard/metrics", icon: Activity },
 ];
 
 export function HudShell({ children }: { children: React.ReactNode }) {
