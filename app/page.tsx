@@ -75,7 +75,6 @@ export default function Home() {
   const router = useRouter();
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [isMounted, setIsMounted] = useState(false);
   const [lastTx, setLastTx] = useState<TransactionResult | null>(null);
   const [walletSelectorOpen, setWalletSelectorOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -86,21 +85,21 @@ export default function Home() {
 
   const isProcessing = aiLoading || txLoading;
 
-  // Load chat session from localStorage after hydration completes
+  // Restore chat session from localStorage after hydration
   useEffect(() => {
-    const cached = localStorage.getItem("stellar_chat_session");
-    if (cached) {
-      try {
+    try {
+      const cached = localStorage.getItem("stellar_chat_session");
+      if (cached) {
         const { messages: savedMessages } = JSON.parse(cached);
         if (Array.isArray(savedMessages) && savedMessages.length > 0) {
+          // eslint-disable-next-line react-hooks/set-state-in-effect
           setMessages(savedMessages);
           console.log("[Chat] ✓ Restored session with", savedMessages.length, "messages");
         }
-      } catch (err) {
-        console.warn("[Chat] Failed to restore session:", err);
       }
+    } catch (err) {
+      console.warn("[Chat] Failed to restore session:", err);
     }
-    setIsMounted(true);
   }, []);
 
   // Auto-scroll on new messages

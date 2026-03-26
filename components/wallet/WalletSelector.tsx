@@ -28,11 +28,13 @@ export function WalletSelector({
   const [detected, setDetected] = useState<WalletId[] | null>(null);
   const checking = open && detected === null;
   const [connectingId, setConnectingId] = useState<WalletId | null>(null);
-  const [platform, setPlatform] = useState<WalletPlatform>("desktop");
+  const [platform, setPlatform] = useState<WalletPlatform>(() =>
+    typeof window !== "undefined" ? detectPlatform() : "desktop"
+  );
 
   useEffect(() => {
     if (!open) return;
-    setPlatform(detectPlatform());
+    // Platform detection is handled by state initializer
   }, [open]);
 
   // Detect which wallets are installed

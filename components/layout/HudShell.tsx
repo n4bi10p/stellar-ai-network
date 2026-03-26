@@ -9,7 +9,6 @@ import {
   Store,
   BarChart3,
   Activity,
-  Settings,
   Menu,
   X,
 } from "lucide-react";
@@ -109,16 +108,6 @@ export function HudShell({ children }: { children: React.ReactNode }) {
             </nav>
           </div>
 
-          <div className="border-t border-border/40 px-3 py-2">
-            <Link
-              href="/config"
-              className="flex items-center gap-2.5 rounded-sm px-2.5 py-1.5 text-xs tracking-wider text-muted hover:bg-surface-2 hover:text-foreground"
-            >
-              <Settings className="h-3.5 w-3.5" />
-              ./config
-            </Link>
-          </div>
-
           <div className="border-t border-border/40 px-4 py-3">
             <div className="flex items-center gap-3">
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border/60 bg-surface-2 text-[10px] font-bold">
@@ -185,16 +174,6 @@ export function HudShell({ children }: { children: React.ReactNode }) {
                     );
                   })}
                 </nav>
-              </div>
-              <div className="border-t border-border/40 px-3 py-2">
-                <Link
-                  href="/config"
-                  onClick={() => setMobileNavOpen(false)}
-                  className="flex items-center gap-2.5 rounded-sm px-2.5 py-1.5 text-xs tracking-wider text-muted hover:bg-surface-2 hover:text-foreground"
-                >
-                  <Settings className="h-3.5 w-3.5" />
-                  ./config
-                </Link>
               </div>
             </aside>
           </>

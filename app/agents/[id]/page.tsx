@@ -754,7 +754,7 @@ export default function AgentDetailPage() {
                       >
                         <div className="flex items-center justify-between gap-3">
                           <div className={log.success ? "text-accent" : "text-red-400"}>
-                            {log.success ? "SUCCESS" : "FAILED"} // {log.triggerSource}
+                            {log.success ? "SUCCESS" : "FAILED"} {/* {log.triggerSource} */}
                           </div>
                           <div className="text-muted">
                             {new Date(log.createdAt).toLocaleString()}

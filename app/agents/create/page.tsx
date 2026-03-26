@@ -282,16 +282,16 @@ function CreateAgentInner() {
                   </div>
                   <ul className="space-y-1 text-[9px] tracking-wider text-muted/90 list-disc pl-4">
                     <li><strong>What:</strong> Send XLM, set a price alert, auto-save, rebalance, or dollar-cost average</li>
-                    <li><strong>Amount:</strong> How many XLM (e.g., "10 XLM", "50 XLM")</li>
-                    <li><strong>Recipient:</strong> Who or where (e.g., "my savings wallet", "GABC123...")</li>
-                    <li><strong>Frequency:</strong> When/how often (e.g., "every Monday", "daily", "weekly")</li>
-                    <li><strong>Conditions:</strong> Any triggers (e.g., "when price drops below $0.10", "if balance exceeds 100 XLM")</li>
+                    <li><strong>Amount:</strong> How many XLM (e.g., &quot;10 XLM&quot;, &quot;50 XLM&quot;)</li>
+                    <li><strong>Recipient:</strong> Who or where (e.g., &quot;my savings wallet&quot;, &quot;GABC123...&quot;)</li>
+                    <li><strong>Frequency:</strong> When/how often (e.g., &quot;every Monday&quot;, &quot;daily&quot;, &quot;weekly&quot;)</li>
+                    <li><strong>Conditions:</strong> Any triggers (e.g., &quot;when price drops below $0.10&quot;, &quot;if balance exceeds 100 XLM&quot;)</li>
                   </ul>
                 </div>
                 <textarea
                   value={aiPrompt}
                   onChange={(e) => setAiPrompt(e.target.value)}
-                  placeholder='Examples: "Send 10 XLM every Monday to my savings wallet" OR "Create a price alert when XLM drops below $0.10" OR "Auto-save 5 XLM daily" OR "Rebalance wallet to 50/50"'
+                  placeholder="Examples: &quot;Send 10 XLM every Monday to my savings wallet&quot; OR &quot;Create a price alert when XLM drops below $0.10&quot; OR &quot;Auto-save 5 XLM daily&quot; OR &quot;Rebalance wallet to 50/50&quot;"
                   disabled={isWorking || txStatus === "success" || aiLoading}
                   rows={4}
                   className="w-full border border-border/40 bg-surface/90 px-4 py-3 text-sm outline-none placeholder:text-muted/40 focus:border-accent/50 disabled:opacity-50"
@@ -342,11 +342,11 @@ function CreateAgentInner() {
                     <div className="border-t border-red-500/20 pt-2">
                       <div className="mb-2 text-[9px] font-semibold tracking-widest text-amber-300">💡 HELPFUL EXAMPLES:</div>
                       <ul className="space-y-1 text-[9px] tracking-wider text-muted/90 list-disc pl-4">
-                        <li>"Send 10 XLM every Monday to my savings wallet"</li>
-                        <li>"Create a price alert when XLM drops below $0.10"</li>
-                        <li>"Auto-save 5 XLM daily to my backup account"</li>
-                        <li>"DCA 2 XLM every day for dollar-cost averaging"</li>
-                        <li>"Rebalance my wallet to 50% XLM and 50% other assets"</li>
+                        <li>&quot;Send 10 XLM every Monday to my savings wallet&quot;</li>
+                        <li>&quot;Create a price alert when XLM drops below $0.10&quot;</li>
+                        <li>&quot;Auto-save 5 XLM daily to my backup account&quot;</li>
+                        <li>&quot;DCA 2 XLM every day for dollar-cost averaging&quot;</li>
+                        <li>&quot;Rebalance my wallet to 50% XLM and 50% other assets&quot;</li>
                       </ul>
                     </div>
                   </div>
@@ -812,7 +812,7 @@ function CreateAgentInner() {
                     <div className="text-[9px] font-semibold tracking-widest text-amber-300 mb-2">TROUBLESHOOTING:</div>
                     <ul className="space-y-1 text-[9px] tracking-wider text-muted/90">
                       <li>✓ Check all required fields are correctly filled</li>
-                      <li>✓ Verify wallet addresses start with 'G' (56 characters)</li>
+                      <li>✓ Verify wallet addresses start with &apos;G&apos; (56 characters)</li>
                       <li>✓ Ensure amounts are positive numbers</li>
                       <li>✓ Check your wallet has sufficient balance for deployment</li>
                     </ul>
