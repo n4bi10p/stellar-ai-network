@@ -4,7 +4,7 @@
  */
 
 import type { Prisma } from "@prisma/client";
-import { getPrismaClient } from "@/lib/db/client";
+import { getPrismaClient, withRetry } from "@/lib/db/client";
 
 /**
  * Save a user event (agent_created, transaction_executed, wallet_connected, etc.)
@@ -95,18 +95,26 @@ export async function saveExecutionEvent(
     if (!userIdOrWalletAddress.includes("-") || userIdOrWalletAddress.length !== 36) {
       // It's a wallet address, look up or create the user UUID
       console.log(`[Analytics] Looking up user by wallet:`, userIdOrWalletAddress);
-      let result = await prisma.$queryRaw<Array<{ id: string }>>`
-        SELECT id FROM "User" WHERE "walletAddress" = ${userIdOrWalletAddress} LIMIT 1
-      `;
+      let result = await withRetry(
+        () => prisma.$queryRaw<Array<{ id: string }>>`
+          SELECT id FROM "User" WHERE "walletAddress" = ${userIdOrWalletAddress} LIMIT 1
+        `,
+        2, // maxRetries
+        50 // delayMs
+      );
       if (!result || result.length === 0) {
         console.log(`[Analytics] User not found, creating new user for wallet:`, userIdOrWalletAddress);
         // User doesn't exist - create one
         try {
-          const createResult = await prisma.$queryRaw<Array<{ id: string }>>`
-            INSERT INTO "User" ("id", "walletAddress", "createdAt") 
-            VALUES (gen_random_uuid(), ${userIdOrWalletAddress}, now())
-            RETURNING "id"
-          `;
+          const createResult = await withRetry(
+            () => prisma.$queryRaw<Array<{ id: string }>>`
+              INSERT INTO "User" ("id", "walletAddress", "createdAt") 
+              VALUES (gen_random_uuid(), ${userIdOrWalletAddress}, now())
+              RETURNING "id"
+            `,
+            2,
+            50
+          );
           if (createResult && createResult.length > 0) {
             userId = createResult[0].id;
             console.log(`[Analytics] User created:`, userId);
@@ -117,9 +125,13 @@ export async function saveExecutionEvent(
         } catch (createErr: unknown) {
           console.log(`[Analytics] User creation conflict (likely created by another process), retrying...`);
           // User might have been created by another process, try to fetch again
-          const retryResult = await prisma.$queryRaw<Array<{ id: string }>>`
-            SELECT id FROM "User" WHERE "walletAddress" = ${userIdOrWalletAddress} LIMIT 1
-          `;
+          const retryResult = await withRetry(
+            () => prisma.$queryRaw<Array<{ id: string }>>`
+              SELECT id FROM "User" WHERE "walletAddress" = ${userIdOrWalletAddress} LIMIT 1
+            `,
+            2,
+            50
+          );
           if (!retryResult || retryResult.length === 0) {
             console.warn("[Analytics] User creation conflict for wallet:", userIdOrWalletAddress);
             return;
@@ -136,10 +148,16 @@ export async function saveExecutionEvent(
     // Use raw SQL with explicit UUID casting to avoid Prisma ORM type issues
     const metadataJson = metadata ? JSON.stringify(metadata) : null;
     console.log(`[Analytics] Inserting ExecutionEvent for userId:`, userId);
-    await prisma.$executeRaw`
-      INSERT INTO "ExecutionEvent" ("id", "userId", "agentId", "status", "txHash", "errorMsg", "metadata", "createdAt")
-      VALUES (gen_random_uuid(), ${userId}::uuid, ${agentId}, ${status}, ${txHash || null}, ${errorMsg || null}, ${metadataJson}::jsonb, now())
-    `;
+    
+    // Use retry logic for resilience against transient connection failures
+    await withRetry(
+      () => prisma.$executeRaw`
+        INSERT INTO "ExecutionEvent" ("id", "userId", "agentId", "status", "txHash", "errorMsg", "metadata", "createdAt")
+        VALUES (gen_random_uuid(), ${userId}::uuid, ${agentId}, ${status}, ${txHash || null}, ${errorMsg || null}, ${metadataJson}::jsonb, now())
+      `,
+      3, // maxRetries
+      100 // delayMs
+    );
     
     console.log(`[Analytics] Execution event saved: ${status} for agent ${agentId}`);
     return { userId, agentId, status, txHash, errorMsg, metadata };

@@ -74,26 +74,8 @@ function createMessageId(): string {
 export default function Home() {
   const router = useRouter();
   const [input, setInput] = useState("");
-  
-  // Initialize messages from localStorage (chat session persistence)
-  const [messages, setMessages] = useState<ChatMessage[]>(() => {
-    if (typeof window !== "undefined") {
-      const cached = localStorage.getItem("stellar_chat_session");
-      if (cached) {
-        try {
-          const { messages: savedMessages } = JSON.parse(cached);
-          if (Array.isArray(savedMessages) && savedMessages.length > 0) {
-            console.log("[Chat] ✓ Restored session with", savedMessages.length, "messages");
-            return savedMessages;
-          }
-        } catch (err) {
-          console.warn("[Chat] Failed to restore session:", err);
-        }
-      }
-    }
-    return [];
-  });
-
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [isMounted, setIsMounted] = useState(false);
   const [lastTx, setLastTx] = useState<TransactionResult | null>(null);
   const [walletSelectorOpen, setWalletSelectorOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -103,6 +85,23 @@ export default function Home() {
   const { sendXLM, loading: txLoading } = useStellar();
 
   const isProcessing = aiLoading || txLoading;
+
+  // Load chat session from localStorage after hydration completes
+  useEffect(() => {
+    const cached = localStorage.getItem("stellar_chat_session");
+    if (cached) {
+      try {
+        const { messages: savedMessages } = JSON.parse(cached);
+        if (Array.isArray(savedMessages) && savedMessages.length > 0) {
+          setMessages(savedMessages);
+          console.log("[Chat] ✓ Restored session with", savedMessages.length, "messages");
+        }
+      } catch (err) {
+        console.warn("[Chat] Failed to restore session:", err);
+      }
+    }
+    setIsMounted(true);
+  }, []);
 
   // Auto-scroll on new messages
   useEffect(() => {
