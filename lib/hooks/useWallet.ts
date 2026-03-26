@@ -1,6 +1,7 @@
 "use client";
 
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 import { fetchBalance as fetchXLMBalance } from "@/lib/stellar/client";
 import { NETWORK_PASSPHRASE } from "@/lib/utils/constants";
 import type { WalletState } from "@/lib/stellar/types";
@@ -50,16 +51,18 @@ interface WalletStore extends WalletState {
   detectWallets: () => Promise<WalletId[]>;
 }
 
-export const useWallet = create<WalletStore>((set, get) => ({
-  connected: false,
-  address: "",
-  balance: "0",
-  loading: false,
-  error: "",
-  activeWallet: null,
-  _provider: null,
+export const useWallet = create<WalletStore>()(
+  persist(
+    (set, get) => ({
+      connected: false,
+      address: "",
+      balance: "0",
+      loading: false,
+      error: "",
+      activeWallet: null,
+      _provider: null,
 
-  detectWallets: async () => {
+      detectWallets: async () => {
     const available: WalletId[] = [];
     for (const p of WALLET_PROVIDERS) {
       try {
@@ -169,4 +172,29 @@ export const useWallet = create<WalletStore>((set, get) => ({
     if (!_provider) throw new Error("No wallet connected");
     return _provider.signTransaction(xdr, NETWORK_PASSPHRASE);
   },
-}));
+    }),
+    {
+      name: "wallet-storage",
+      partialize: (state) => ({
+        // Only persist these fields (not _provider which is not serializable)
+        connected: state.connected,
+        address: state.address,
+        activeWallet: state.activeWallet,
+      }),
+      onRehydrateStorage: () => (state) => {
+        // After rehydrating from localStorage, try to reconnect
+        if (state && state.connected && state.address && state.activeWallet) {
+          console.log(
+            `[WALLET] Rehydrating from storage: ${state.address.slice(0, 8)}...`
+          );
+          // Auto-reconnect silently
+          state.connect?.(state.activeWallet).catch((err) => {
+            console.warn("[WALLET] Auto-reconnect failed:", err);
+            // Even if reconnect fails, wallet state is restored from cache
+            // so activity log can still load with the address
+          });
+        }
+      },
+    }
+  )
+);

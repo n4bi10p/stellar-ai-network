@@ -18,6 +18,7 @@ interface PlatformMetrics {
   breakdowns: {
     executionStatus: Array<{ status: string; count: number }>;
     topStrategies: Array<{ strategy: string; count: number }>;
+    transactionType?: Array<{ type: string; count: number }>;
   };
   timestamp: string;
 }
@@ -195,6 +196,35 @@ export default function PlatformAnalyticsPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Transaction Type Breakdown */}
+              {data.breakdowns.transactionType && data.breakdowns.transactionType.length > 0 && (
+                <div className="mb-6">
+                  <div className="mb-3 text-xs font-semibold tracking-widest text-muted">
+                    {">> TRANSACTION_TYPE_BREAKDOWN"}
+                  </div>
+                  <div className="border border-border/40 bg-surface/80 px-5 py-4">
+                    <div className="space-y-2 font-mono text-xs">
+                      {data.breakdowns.transactionType.map((item) => {
+                        const totalCount = data.breakdowns.transactionType?.reduce((sum, t) => sum + t.count, 0) || 1;
+                        const percentage = ((item.count / totalCount) * 100).toFixed(1);
+                        return (
+                          <div key={item.type} className="flex items-center gap-4">
+                            <span className="w-20 text-[10px] tracking-wider text-accent uppercase">
+                              {item.type.replace(/_/g, " ")}
+                            </span>
+                            <span className="text-accent">
+                              {bar(item.count, Math.max(...(data.breakdowns.transactionType || []).map(t => t.count)))}
+                            </span>
+                            <span className="text-muted w-12">{item.count}</span>
+                            <span className="text-muted/60 text-[9px]">({percentage}%)</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Top Strategies */}
               <div className="mb-6">

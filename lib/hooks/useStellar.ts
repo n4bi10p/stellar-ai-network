@@ -10,11 +10,12 @@ export function useStellar() {
 
   async function sendXLM(
     destination: string,
-    amount: string
+    amount: string,
+    agentId?: string
   ): Promise<TransactionResult> {
     setLoading(true);
     try {
-      console.log("[useStellar] Starting XLM send...", { destination, amount });
+      console.log("[useStellar] Starting XLM send...", { destination, amount, agentId });
       
       // 1. Build unsigned transaction via API
       const buildRes = await fetch("/api/stellar/send", {
@@ -39,7 +40,11 @@ export function useStellar() {
       const submitRes = await fetch("/api/stellar/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ signedXDR: signedXdr }),
+        body: JSON.stringify({
+          signedXDR: signedXdr,
+          ...(address && { walletAddress: address }), // Always include walletAddress for manual transactions
+          ...(agentId && { agentId }),
+        }),
       });
 
       if (!submitRes.ok) {

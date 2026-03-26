@@ -113,27 +113,65 @@ export default function DashboardPage() {
 
   const fetchExecutionSummary = useCallback(async () => {
     if (!address) return;
+    
     setExecutionLoading(true);
     try {
-      const res = await fetch(`/api/agents/execution-summary?owner=${address}`);
+      const url = `/api/agents/execution-summary?owner=${address}`;
+      console.log("[Dashboard] Fetching execution summary:", url);
+      
+      const res = await fetch(url);
       if (!res.ok) throw new Error("Failed to fetch execution summary");
+      
       const data = await res.json();
-      setExecutionSummary((data.summary as ExecutionSummary) ?? {
+      const summary = (data.summary as ExecutionSummary) ?? {
         total: 0,
         successful: 0,
         failed: 0,
         successRate: 0,
-      });
-      setRecentExecutions((data.recent as RecentExecution[]) ?? []);
+      };
+      const recent = (data.recent as RecentExecution[]) ?? [];
+      
+      setExecutionSummary(summary);
+      setRecentExecutions(recent);
+
+      // Save to localStorage for persistence across navigation
+      localStorage.setItem('dashboard_executions', JSON.stringify({
+        summary,
+        recent,
+        timestamp: new Date().toISOString(),
+      }));
+      
+      console.log("[Dashboard] ✓ Fetched and cached:", recent.length, "recent executions");
     } catch (err) {
-      console.error("Execution summary fetch error:", err);
+      console.error("[Dashboard] Execution summary fetch error:", err);
     } finally {
       setExecutionLoading(false);
     }
   }, [address]);
 
+  // Load cached execution data on mount (before API call)
+  useEffect(() => {
+    const cached = localStorage.getItem('dashboard_executions');
+    if (cached) {
+      try {
+        const { summary, recent } = JSON.parse(cached);
+        setExecutionSummary(summary || {
+          total: 0,
+          successful: 0,
+          failed: 0,
+          successRate: 0,
+        });
+        setRecentExecutions(recent || []);
+        console.log("[Dashboard] ✓ Restored from cache:", recent?.length || 0, "recent executions");
+      } catch (err) {
+        console.warn("[Dashboard] Failed to parse cached data:", err);
+      }
+    }
+  }, []);
+
   useEffect(() => {
     if (connected && address) {
+      console.log("[Dashboard] Connected with address:", address?.slice(0, 8), "- Fetching fresh data");
       fetchAgents();
       fetchDueAgents();
       fetchExecutionSummary();

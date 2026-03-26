@@ -74,7 +74,26 @@ function createMessageId(): string {
 export default function Home() {
   const router = useRouter();
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  
+  // Initialize messages from localStorage (chat session persistence)
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    if (typeof window !== "undefined") {
+      const cached = localStorage.getItem("stellar_chat_session");
+      if (cached) {
+        try {
+          const { messages: savedMessages } = JSON.parse(cached);
+          if (Array.isArray(savedMessages) && savedMessages.length > 0) {
+            console.log("[Chat] ✓ Restored session with", savedMessages.length, "messages");
+            return savedMessages;
+          }
+        } catch (err) {
+          console.warn("[Chat] Failed to restore session:", err);
+        }
+      }
+    }
+    return [];
+  });
+
   const [lastTx, setLastTx] = useState<TransactionResult | null>(null);
   const [walletSelectorOpen, setWalletSelectorOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -91,6 +110,19 @@ export default function Home() {
       top: scrollRef.current.scrollHeight,
       behavior: "smooth",
     });
+  }, [messages]);
+
+  // Save chat session to localStorage whenever messages change
+  useEffect(() => {
+    if (typeof window !== "undefined" && messages.length > 0) {
+      localStorage.setItem(
+        "stellar_chat_session",
+        JSON.stringify({
+          messages,
+          timestamp: new Date().toISOString(),
+        })
+      );
+    }
   }, [messages]);
 
   function addMessage(
@@ -179,6 +211,10 @@ export default function Home() {
 
     if (trimmed.toLowerCase() === "clear") {
       setMessages([]);
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("stellar_chat_session");
+      }
+      console.log("[Chat] Session cleared");
       return;
     }
 

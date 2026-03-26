@@ -211,7 +211,7 @@ export default function AgentDetailPage() {
       const submitRes = await fetch("/api/stellar/submit-soroban", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ signedXDR: signedXdr }),
+        body: JSON.stringify({ signedXDR: signedXdr, agentId: contractId, walletAddress: address }),
       });
 
       if (!submitRes.ok) {
@@ -285,7 +285,7 @@ export default function AgentDetailPage() {
         const submitRes = await fetch("/api/stellar/submit-soroban", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ signedXDR: signedXdr }),
+          body: JSON.stringify({ signedXDR: signedXdr, agentId: contractId, walletAddress: address }),
         });
 
         if (!submitRes.ok) {
@@ -358,7 +358,7 @@ export default function AgentDetailPage() {
       const submitRes = await fetch("/api/stellar/submit-soroban", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ signedXDR: signedXdr }),
+        body: JSON.stringify({ signedXDR: signedXdr, agentId: contractId, walletAddress: address }),
       });
 
       if (!submitRes.ok) {

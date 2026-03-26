@@ -30,6 +30,11 @@ export async function GET(request: NextRequest) {
           { strategy: "hedging", count: 18 },
           { strategy: "yield_farming", count: 12 },
         ],
+        transactionType: [
+          { type: "agent_execution", count: 421 },
+          { type: "manual_transfer", count: 156 },
+          { type: "manual_soroban", count: 35 },
+        ],
       },
       timestamp: new Date().toISOString(),
       isDemo: true,
@@ -101,6 +106,21 @@ export async function GET(request: NextRequest) {
       // 10. Total event count
       const totalEventCount = await prisma.userEvent.count();
 
+      // 11. Transaction type breakdown (agent vs manual)
+      const allExecutionEvents = await prisma.executionEvent.findMany({
+        select: { metadata: true },
+      });
+
+      const transactionTypeBreakdown = allExecutionEvents.reduce(
+        (acc: any, event) => {
+          const metadata = event.metadata as any;
+          const type = metadata?.transactionType || "unknown";
+          acc[type] = (acc[type] || 0) + 1;
+          return acc;
+        },
+        { agent_execution: 0, manual_transfer: 0, manual_soroban: 0, unknown: 0 }
+      );
+
       return NextResponse.json({
         metrics: {
           totalUsers,
@@ -121,6 +141,11 @@ export async function GET(request: NextRequest) {
             strategy: item.strategy,
             count: item._count.strategy,
           })),
+          transactionType: [
+            { type: "agent_execution", count: transactionTypeBreakdown.agent_execution },
+            { type: "manual_transfer", count: transactionTypeBreakdown.manual_transfer },
+            { type: "manual_soroban", count: transactionTypeBreakdown.manual_soroban },
+          ],
         },
         timestamp: new Date().toISOString(),
       });

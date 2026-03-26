@@ -52,7 +52,6 @@ model Agent {
   executionLogs     ExecutionLog[]
   feedbackEvents    FeedbackEvent[]
   templateUsages    TemplateUsage[]
-  executionEvents   ExecutionEvent[]
 
   @@index([userId, createdAt])
   @@index([owner, createdAt])
@@ -79,7 +78,7 @@ model UserEvent {
 model ExecutionEvent {
   id          String    @id @default(cuid())
   userId      String    @db.Uuid
-  agentId     String
+  agentId     String?   // Optional - can be NULL for manual transactions or "manual_GCBWJPGR" format
   status      String    // 'pending', 'success', 'failed'
   txHash      String?
   successRate Float?    // Success percentage if batch
@@ -88,7 +87,6 @@ model ExecutionEvent {
   createdAt   DateTime  @default(now())
   
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  agent       Agent     @relation(fields: [agentId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
   @@index([agentId, createdAt])
