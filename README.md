@@ -59,6 +59,43 @@
 
 ---
 
+## Testnet Users Evidence & Submission Status
+
+✅ **Level 5 (Blue Belt) Submission Complete**
+
+### User Testing & Feedback
+
+Real testnet users have tested and provided feedback on the Stellar AI Network platform:
+
+📊 **[View Testnet Users Feedback & Verification](https://docs.google.com/spreadsheets/d/1Uvo59f6XyiUnIAfTZsUr89VYOKFzWMYqeNByyik3fAE/edit?usp=sharing)**
+
+This spreadsheet includes:
+- ✅ Multiple verified testnet wallet addresses
+- ✅ Verification links on Stellar Expert explorer
+- ✅ User feedback on features and UX
+- ✅ Agent creation and execution evidence
+- ✅ Transaction hashes on Stellar Testnet
+
+### Submission Checklist
+
+- ✅ Database schema & ORM (Prisma + PostgreSQL)
+- ✅ Multi-wallet support (Freiher, Albedo, Rabet, WalletConnect)
+- ✅ Smart Contracts (Soroban in Rust)
+- ✅ AI Agent Creation (Gemini 2.5 Flash)
+- ✅ Execution Modes (Manual + Auto Scheduling)
+- ✅ Strategy Templates (Auto-rebalance, Price Alert, DCA)
+- ✅ Mobile Responsiveness (tested on 430px viewport)
+- ✅ Analytics Integration (5+ event types tracked)
+- ✅ Reminder System (Email, Telegram, Discord, In-App)
+- ✅ 62/62 Unit Tests Passing
+- ✅ Real Testnet Users Tested & Verified
+- ✅ Comprehensive Error Handling
+- ✅ Type-Safe TypeScript Implementation
+- ✅ Production-Ready Deployment
+- ✅ Branding & Favicon Integrated
+
+---
+
 ## Demo Video
 
 > 🎬 **Demo video:** 
