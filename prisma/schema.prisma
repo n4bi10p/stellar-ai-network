@@ -46,6 +46,7 @@ model Agent {
   nextExecutionAt   DateTime?
   executionCount    Int?
   fullAuto          Json?
+  governance        Json?
   
   // Relations
   user              User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
@@ -78,7 +79,7 @@ model UserEvent {
 model ExecutionEvent {
   id          String    @id @default(cuid())
   userId      String    @db.Uuid
-  agentId     String?   // Optional - can be NULL for manual transactions or "manual_GCBWJPGR" format
+  agentId     String?   // Optional - null for manual transactions
   status      String    // 'pending', 'success', 'failed'
   txHash      String?
   successRate Float?    // Success percentage if batch
@@ -92,6 +93,49 @@ model ExecutionEvent {
   @@index([agentId, createdAt])
   @@index([status, createdAt])
   @@index([createdAt])
+}
+
+model DailyStats {
+  id                    String   @id @default(cuid())
+  date                  DateTime @unique
+  dau                   Int
+  wau                   Int
+  mau                   Int
+  newUsers              Int      @default(0)
+  totalUsers            Int      @default(0)
+  totalAgents           Int      @default(0)
+  runningAgents         Int      @default(0)
+  executions            Int      @default(0)
+  successfulExecutions  Int      @default(0)
+  failedExecutions      Int      @default(0)
+  txVolume              Float    @default(0)
+  avgTxSize             Float    @default(0)
+  successRate           Float    @default(0)
+  retention7d           Float    @default(0)
+  breakdowns            Json?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([date])
+}
+
+// Durable scheduler state for serverless environments
+model SchedulerDueWindow {
+  window    String   @id
+  events    Json
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([expiresAt])
+}
+
+model SchedulerIdempotency {
+  key       String   @id
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([expiresAt])
 }
 
 // Legacy execution logs (kept for backwards compatibility)
@@ -141,4 +185,69 @@ model TemplateUsage {
 
   @@index([templateId, createdAt])
   @@index([owner, createdAt])
+}
+
+// ── Level 6 Governance Audit Trail ──
+model AgentAuditLog {
+  id        String   @id @default(cuid())
+  agentId   String
+  owner     String   // Wallet address of the agent owner
+
+  // Action type: 'paused' | 'resumed' | 'spend_limit_blocked' |
+  //              'execution_approved' | 'governance_updated' | 'dry_run_executed' | 'config_changed'
+  action    String
+  details   Json     @default("{}")
+
+  createdAt DateTime @default(now())
+
+  @@index([agentId, createdAt])
+  @@index([owner, createdAt])
+  @@index([action, createdAt])
+}
+
+// ── Level 6 Advanced: Multi-Agent Workflow Orchestrator ──
+model AgentWorkflow {
+  id          String   @id @default(cuid())
+  owner       String   // Wallet address of workflow creator
+  name        String
+  description String?
+
+  // JSON array of WorkflowStep (see lib/agents/workflow-types.ts)
+  steps       Json     @default("[]")
+
+  status      String   @default("active") // active | paused | completed | archived
+  runCount    Int      @default(0)
+  lastRunAt   DateTime?
+  nextRunAt   DateTime?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  runs        AgentWorkflowRun[]
+
+  @@index([owner, createdAt])
+  @@index([status, nextRunAt])
+}
+
+model AgentWorkflowRun {
+  id           String   @id @default(cuid())
+  workflowId   String
+  workflow     AgentWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  status       String   // running | completed | failed | partial
+  triggerSource String  // manual | cron | api
+
+  // JSON array of StepRunResult
+  steps        Json     @default("[]")
+
+  totalSteps     Int    @default(0)
+  completedSteps Int    @default(0)
+  failedSteps    Int    @default(0)
+  skippedSteps   Int    @default(0)
+
+  startedAt    DateTime @default(now())
+  completedAt  DateTime?
+
+  @@index([workflowId, startedAt])
+  @@index([status, startedAt])
 }

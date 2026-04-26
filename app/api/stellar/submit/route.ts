@@ -1,4 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import {
+  buildRateLimitKey,
+  checkRateLimit,
+  rateLimitResponse,
+} from "@/lib/middleware/rateLimiter";
 import { submitTransaction } from "@/lib/stellar/client";
 import { saveExecutionEvent } from "@/lib/store/analytics";
 
@@ -7,6 +12,17 @@ export async function POST(request: NextRequest) {
   let walletAddress: string | undefined;
 
   try {
+    const rateLimit = checkRateLimit(buildRateLimitKey(request, "stellar:submit"), {
+      maxRequests: 20,
+      windowMs: 60_000,
+    });
+    if (!rateLimit.allowed) {
+      return rateLimitResponse(
+        rateLimit,
+        "Too many transaction submission requests. Please try again shortly."
+      );
+    }
+
     const body = await request.json();
     const { signedXDR, agentId: bodyAgentId, walletAddress: bodyWalletAddress } = body;
 
@@ -26,7 +42,7 @@ export async function POST(request: NextRequest) {
     // Record execution event for ALL transactions (agent or manual)
     if (walletAddress && result) {
       const txType = agentId ? "agent_execution" : "manual_transfer";
-      const executionAgentId = agentId || `manual_${walletAddress.slice(0, 8)}`;
+      const executionAgentId = agentId ?? null;
       
       saveExecutionEvent(
         walletAddress,
@@ -40,7 +56,7 @@ export async function POST(request: NextRequest) {
           timestamp: new Date().toISOString()
         }
       ).then(() => {
-        console.log(`[STELLAR/SUBMIT] ExecutionEvent recorded (${txType}): agent=${executionAgentId}, tx=${result.hash}`);
+        console.log(`[STELLAR/SUBMIT] ExecutionEvent recorded (${txType}): agent=${executionAgentId ?? "manual"}, tx=${result.hash}`);
       }).catch((err) => {
         console.error(`[STELLAR/SUBMIT] Failed to save ExecutionEvent:`, err instanceof Error ? err.message : String(err));
       });
@@ -55,7 +71,7 @@ export async function POST(request: NextRequest) {
     // Try to record failure event if we have wallet info
     if (walletAddress) {
       const txType = agentId ? "agent_execution" : "manual_transfer";
-      const executionAgentId = agentId || `manual_${walletAddress.slice(0, 8)}`;
+      const executionAgentId = agentId ?? null;
       
       saveExecutionEvent(
         walletAddress,

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Layers, Zap, Clock, TrendingUp, Repeat, PiggyBank } from "lucide-react";
+import { ArrowRight, Layers, Zap, Clock, TrendingUp, Repeat, PiggyBank, GitBranch } from "lucide-react";
 import { HudShell } from "@/components/layout/HudShell";
 import { AGENT_TEMPLATES } from "@/lib/agents/templates";
 
@@ -11,6 +11,7 @@ const strategyIcons: Record<string, React.ReactNode> = {
   price_alert: <TrendingUp className="h-5 w-5" />,
   dca_bot: <Repeat className="h-5 w-5" />,
   savings_sweep: <PiggyBank className="h-5 w-5" />,
+  workflow_chain: <GitBranch className="h-5 w-5" />,
 };
 
 export default function MarketplacePage() {

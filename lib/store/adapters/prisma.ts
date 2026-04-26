@@ -12,7 +12,12 @@ function toDateOrNull(value: string | null | undefined): Date | null {
 }
 
 function toJsonValue(
-  value: Record<string, unknown> | StoredAgent["reminders"] | StoredAgent["fullAuto"] | undefined
+  value:
+    | Record<string, unknown>
+    | StoredAgent["reminders"]
+    | StoredAgent["fullAuto"]
+    | StoredAgent["governance"]
+    | undefined
 ): Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput | undefined {
   if (value === undefined) return undefined;
   return value as Prisma.InputJsonValue;
@@ -36,6 +41,7 @@ function mapRecordToStoredAgent(record: {
   nextExecutionAt: Date | null;
   executionCount: number | null;
   fullAuto: unknown;
+  governance: unknown;
 }): StoredAgent {
   return {
     id: record.id,
@@ -55,6 +61,8 @@ function mapRecordToStoredAgent(record: {
     nextExecutionAt: toIsoOrNull(record.nextExecutionAt) ?? undefined,
     executionCount: record.executionCount ?? undefined,
     fullAuto: (record.fullAuto as StoredAgent["fullAuto"] | null) ?? undefined,
+    governance:
+      (record.governance as StoredAgent["governance"] | null) ?? undefined,
   };
 }
 
@@ -77,6 +85,7 @@ function mapStoredAgentToRecord(agent: StoredAgent) {
     nextExecutionAt: toDateOrNull(agent.nextExecutionAt),
     executionCount: agent.executionCount ?? 0,
     fullAuto: toJsonValue(agent.fullAuto),
+    governance: toJsonValue(agent.governance),
   };
 }
 

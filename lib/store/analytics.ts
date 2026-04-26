@@ -4,6 +4,7 @@
  */
 
 import type { Prisma } from "@prisma/client";
+import { deleteCachedByPrefix } from "@/lib/cache/cache";
 import { getPrismaClient, withRetry } from "@/lib/db/client";
 
 /**
@@ -61,6 +62,7 @@ export async function saveUserEvent(
       INSERT INTO "UserEvent" ("id", "userId", "eventName", "eventData", "createdAt")
       VALUES (gen_random_uuid(), ${userId}::uuid, ${eventName}, ${eventDataJson}::jsonb, now())
     `;
+    deleteCachedByPrefix("analytics:metrics:");
     
     console.log(`[Analytics] User event saved: ${eventName} for ${userIdOrWalletAddress}`);
     return { userId, eventName, eventData };
@@ -79,14 +81,19 @@ export async function saveUserEvent(
  */
 export async function saveExecutionEvent(
   userIdOrWalletAddress: string,
-  agentId: string,
+  agentId: string | null,
   status: "pending" | "success" | "failed",
   txHash?: string,
   errorMsg?: string,
   metadata?: Record<string, unknown> | null
 ) {
   try {
-    console.log(`[Analytics] saveExecutionEvent called:`, { userIdOrWalletAddress, agentId, status, txHash });
+    console.log(`[Analytics] saveExecutionEvent called:`, {
+      userIdOrWalletAddress,
+      agentId,
+      status,
+      txHash,
+    });
     const prisma = getPrismaClient();
     
     // If userIdOrWalletAddress looks like a UUID (36 chars with hyphens), use directly
@@ -153,13 +160,14 @@ export async function saveExecutionEvent(
     await withRetry(
       () => prisma.$executeRaw`
         INSERT INTO "ExecutionEvent" ("id", "userId", "agentId", "status", "txHash", "errorMsg", "metadata", "createdAt")
-        VALUES (gen_random_uuid(), ${userId}::uuid, ${agentId}, ${status}, ${txHash || null}, ${errorMsg || null}, ${metadataJson}::jsonb, now())
+        VALUES (gen_random_uuid(), ${userId}::uuid, ${agentId || null}, ${status}, ${txHash || null}, ${errorMsg || null}, ${metadataJson}::jsonb, now())
       `,
       3, // maxRetries
       100 // delayMs
     );
+    deleteCachedByPrefix("analytics:metrics:");
     
-    console.log(`[Analytics] Execution event saved: ${status} for agent ${agentId}`);
+    console.log(`[Analytics] Execution event saved: ${status} for agent ${agentId ?? "manual"}`);
     return { userId, agentId, status, txHash, errorMsg, metadata };
   } catch (err) {
     console.error("[Analytics] Error saving execution event:", {

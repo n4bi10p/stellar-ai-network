@@ -49,13 +49,15 @@ export async function GET(request: NextRequest) {
     // Map to recent format
     const recent = events.slice(0, 8).map((event) => {
       const metadata = event.metadata as any;
-      const isManual = event.agentId?.startsWith("manual_");
+      const transactionType =
+        metadata?.transactionType || (event.agentId ? "agent_execution" : "manual_transfer");
+      const isManual = transactionType.startsWith("manual_");
       return {
         id: event.id,
         agentId: event.agentId,
-        agentName: isManual ? `Manual Transfer` : event.agentId,
+        agentName: isManual ? "Manual Transfer" : (event.agentId ?? "Unknown Agent"),
         contractId: null,
-        triggerSource: metadata?.transactionType || (isManual ? "manual_transfer" : "agent_execution"),
+        triggerSource: transactionType,
         success: event.status === "success",
         txHash: event.txHash,
         createdAt: event.createdAt,

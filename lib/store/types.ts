@@ -2,6 +2,17 @@ import type { EncryptedSecretBlob } from "@/lib/security/crypto";
 
 export type ExecutionMode = "manual" | "assisted_auto" | "full_auto";
 
+export interface AgentGovernance {
+  paused?: boolean;
+  pauseReason?: string | null;
+  pausedAt?: string | null;
+  perExecutionLimitXlm?: number | null;
+  dailySpendLimitXlm?: number | null;
+  dryRunMode?: boolean;
+  requiresApproval?: boolean;
+  lastApprovalAt?: string | null;
+}
+
 export interface StoredAgent {
   id: string; // unique UUID
   contractId: string;
@@ -55,4 +66,7 @@ export interface StoredAgent {
     keyStoredAt?: string | null;
     keyRevokedAt?: string | null;
   };
+
+  /** Governance + emergency controls (Level 6) */
+  governance?: AgentGovernance;
 }

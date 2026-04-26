@@ -34,6 +34,7 @@ export async function addAgent(
     const strategyStateJson = agent.strategyState ? JSON.stringify(agent.strategyState) : null;
     const remindersJson = agent.reminders ? JSON.stringify(agent.reminders) : null;
     const fullAutoJson = agent.fullAuto ? JSON.stringify(agent.fullAuto) : null;
+    const governanceJson = agent.governance ? JSON.stringify(agent.governance) : null;
 
     // First, ensure User exists (create or get by wallet address)
     let userId: string | null = null;
@@ -65,7 +66,7 @@ export async function addAgent(
         "id", "userId", "contractId", "owner", "name", "strategy", "templateId", 
         "createdAt", "txHash", "strategyConfig", "strategyState", "autoExecuteEnabled", 
         "executionMode", "reminders", "lastExecutionAt", "nextExecutionAt", 
-        "executionCount", "fullAuto"
+        "executionCount", "fullAuto", "governance"
       ) VALUES (
         ${newAgent.id}, ${userId || null}::uuid, ${agent.contractId}, ${agent.owner}, ${agent.name}, 
         ${agent.strategy}, ${agent.templateId || null}, now(), ${agent.txHash || null}, 
@@ -73,7 +74,7 @@ export async function addAgent(
         ${agent.autoExecuteEnabled || false}, ${agent.executionMode || null}, 
         ${remindersJson}::jsonb, ${agent.lastExecutionAt || null}, 
         ${agent.nextExecutionAt || null}, ${agent.executionCount || null}, 
-        ${fullAutoJson}::jsonb
+        ${fullAutoJson}::jsonb, ${governanceJson}::jsonb
       )
     `;
   } catch (err) {

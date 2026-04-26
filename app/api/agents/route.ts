@@ -3,6 +3,12 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { buildInitialize } from "@/lib/stellar/contracts";
+import { deleteCachedByPrefix, withCached } from "@/lib/cache/cache";
+import {
+  buildRateLimitKey,
+  checkRateLimit,
+  rateLimitResponse,
+} from "@/lib/middleware/rateLimiter";
 import { readAgents, addAgent, getAgentsByOwner } from "@/lib/store/agents";
 import { saveUserEvent } from "@/lib/store/analytics";
 import {
@@ -13,7 +19,12 @@ import {
 export async function GET(request: NextRequest) {
   try {
     const owner = request.nextUrl.searchParams.get("owner");
-    const agents = owner ? await getAgentsByOwner(owner) : await readAgents();
+    const cacheKey = owner ? `agents:list:owner:${owner}` : "agents:list:all";
+    const agents = await withCached(
+      cacheKey,
+      () => (owner ? getAgentsByOwner(owner) : readAgents()),
+      15
+    );
     return NextResponse.json({ agents });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to list agents";
@@ -24,6 +35,17 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const rateLimit = checkRateLimit(buildRateLimitKey(request, "agents:create"), {
+      maxRequests: 10,
+      windowMs: 60_000,
+    });
+    if (!rateLimit.allowed) {
+      return rateLimitResponse(
+        rateLimit,
+        "Too many agent creation requests. Please try again in a minute."
+      );
+    }
+
     const { owner, name, strategy, templateId, strategyConfig } =
       await request.json();
 
@@ -104,6 +126,9 @@ export async function POST(request: NextRequest) {
       strategy: parsedStrategy.data,
       contractId,
     }).catch(() => {}); // Silently fail if analytics unavailable
+
+    deleteCachedByPrefix("agents:list:");
+    deleteCachedByPrefix("analytics:metrics:");
 
     return NextResponse.json({
       success: true,

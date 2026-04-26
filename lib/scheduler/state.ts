@@ -1,19 +1,55 @@
 import fs from "fs/promises";
 import path from "path";
 import type { DueEvent } from "@/lib/scheduler/types";
+import { getPrismaClient } from "@/lib/db/client";
 
 const HOUR_TTL_SECONDS = 2 * 60 * 60;
 const IDEMPOTENCY_TTL_SECONDS = 26 * 60 * 60;
+
+type SchedulerBackend = "postgres" | "redis" | "local";
 
 type LocalState = {
   due: Record<string, DueEvent[]>;
   idem: Record<string, string>;
 };
 
-const STATE_FILE = path.join(process.cwd(), "data", "scheduler-state.json");
+const STATE_FILE =
+  process.env.SCHEDULER_STATE_FILE ||
+  (process.env.NODE_ENV === "test"
+    ? path.join(process.cwd(), "data", ".scheduler-state.test.json")
+    : path.join(process.cwd(), "data", "scheduler-state.json"));
 
 function redisConfigured(): boolean {
   return Boolean(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
+}
+
+function postgresConfigured(): boolean {
+  return Boolean(process.env.DATABASE_URL);
+}
+
+function resolveBackend(): SchedulerBackend {
+  const configured = process.env.SCHEDULER_STATE_BACKEND;
+  if (configured === "postgres" || configured === "redis" || configured === "local") {
+    return configured;
+  }
+
+  if (process.env.NODE_ENV === "test") {
+    return "local";
+  }
+
+  if (postgresConfigured()) {
+    return "postgres";
+  }
+
+  if (redisConfigured()) {
+    return "redis";
+  }
+
+  return "local";
+}
+
+export function getSchedulerBackendKind(): SchedulerBackend {
+  return resolveBackend();
 }
 
 async function redisCommand<T>(command: unknown[]): Promise<T> {
@@ -80,7 +116,28 @@ export function getDailyWindow(date = new Date()): string {
 }
 
 export async function saveDueEvents(window: string, events: DueEvent[]): Promise<void> {
-  if (redisConfigured()) {
+  const backend = resolveBackend();
+
+  if (backend === "postgres") {
+    const prisma = getPrismaClient();
+    const expiresAt = new Date(Date.now() + HOUR_TTL_SECONDS * 1000);
+    const payload = JSON.stringify(events);
+
+    await prisma.$executeRaw`
+      INSERT INTO "SchedulerDueWindow" ("window", "events", "expiresAt", "createdAt", "updatedAt")
+      VALUES (${window}, ${payload}::jsonb, ${expiresAt}, now(), now())
+      ON CONFLICT ("window")
+      DO UPDATE
+      SET "events" = EXCLUDED."events", "expiresAt" = EXCLUDED."expiresAt", "updatedAt" = now()
+    `;
+
+    await prisma.$executeRaw`
+      DELETE FROM "SchedulerDueWindow" WHERE "expiresAt" <= now()
+    `;
+    return;
+  }
+
+  if (backend === "redis") {
     const key = `due:${window}`;
     await redisCommand(["SET", key, JSON.stringify(events), "EX", HOUR_TTL_SECONDS]);
     return;
@@ -92,7 +149,40 @@ export async function saveDueEvents(window: string, events: DueEvent[]): Promise
 }
 
 export async function loadDueEvents(window: string): Promise<DueEvent[]> {
-  if (redisConfigured()) {
+  const backend = resolveBackend();
+
+  if (backend === "postgres") {
+    const prisma = getPrismaClient();
+
+    await prisma.$executeRaw`
+      DELETE FROM "SchedulerDueWindow" WHERE "expiresAt" <= now()
+    `;
+
+    const rows = await prisma.$queryRaw<Array<{ events: unknown }>>`
+      SELECT "events"
+      FROM "SchedulerDueWindow"
+      WHERE "window" = ${window} AND "expiresAt" > now()
+      LIMIT 1
+    `;
+
+    if (rows.length === 0) return [];
+
+    const value = rows[0].events;
+    if (Array.isArray(value)) return value as DueEvent[];
+
+    if (typeof value === "string") {
+      try {
+        const parsed = JSON.parse(value) as unknown;
+        return Array.isArray(parsed) ? (parsed as DueEvent[]) : [];
+      } catch {
+        return [];
+      }
+    }
+
+    return [];
+  }
+
+  if (backend === "redis") {
     const key = `due:${window}`;
     const raw = await redisCommand<string | null>(["GET", key]);
     if (!raw) return [];
@@ -113,10 +203,29 @@ export async function markIdempotentOnce(options: {
   eventId: string;
   ttlSeconds?: number;
 }): Promise<boolean> {
+  const backend = resolveBackend();
   const ttl = options.ttlSeconds ?? IDEMPOTENCY_TTL_SECONDS;
   const key = `${options.kind}:${options.eventId}`;
 
-  if (redisConfigured()) {
+  if (backend === "postgres") {
+    const prisma = getPrismaClient();
+    const expiresAt = new Date(Date.now() + ttl * 1000);
+
+    await prisma.$executeRaw`
+      DELETE FROM "SchedulerIdempotency" WHERE "expiresAt" <= now()
+    `;
+
+    const inserted = await prisma.$queryRaw<Array<{ key: string }>>`
+      INSERT INTO "SchedulerIdempotency" ("key", "expiresAt", "createdAt")
+      VALUES (${key}, ${expiresAt}, now())
+      ON CONFLICT ("key") DO NOTHING
+      RETURNING "key"
+    `;
+
+    return inserted.length > 0;
+  }
+
+  if (backend === "redis") {
     const result = await redisCommand<string | null>([
       "SET",
       key,

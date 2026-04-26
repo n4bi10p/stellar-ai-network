@@ -10,6 +10,14 @@ import { addExecutionLog } from "@/lib/store/execution-logs";
 import { decideStrategy, type StrategyContext } from "./strategies";
 import { signSorobanXdrWithSecret } from "@/lib/stellar/auto-sign";
 import { resolveExecutionMode } from "@/lib/agents/modes";
+import { parseWorkflowChainConfig } from "@/lib/utils/validation";
+import {
+  buildWorkflowChainLogMetadata,
+  buildWorkflowChainSuccessStatePatch,
+} from "./strategies/workflow_chain";
+import { retryWithBackoff } from "@/lib/scheduler/retry";
+import { evaluateGovernanceForExecution } from "@/lib/agents/governance";
+import { writeAuditLog } from "@/lib/agents/audit-log";
 
 export interface AgentExecutionResult {
   agentId: string;
@@ -19,6 +27,7 @@ export interface AgentExecutionResult {
   nextExecutionAt?: string | null;
   txHash?: string;
   error?: string;
+  logMetadata?: Record<string, unknown>;
 }
 
 export interface AgentDueResult {
@@ -123,6 +132,16 @@ export async function executeAgentOnce(options: {
   };
 
   const decision = await decideStrategy(ctx);
+  const workflowConfig =
+    agent.strategy === "workflow_chain"
+      ? parseWorkflowChainConfig(
+          (agent.strategyConfig ?? {}) as Record<string, unknown>
+        )
+      : null;
+  const observedBalanceXlm =
+    typeof decision.statePatch?.lastObservedBalanceXlm === "number"
+      ? decision.statePatch.lastObservedBalanceXlm
+      : Number(decision.statePatch?.lastObservedBalanceXlm ?? NaN);
 
   // Persist any state / schedule changes even when not executing
   await updateAgentStrategy(agentId, {
@@ -139,6 +158,40 @@ export async function executeAgentOnce(options: {
       nextExecutionAt: decision.nextExecutionAt ?? null,
     };
   }
+
+  // ── Governance gate ─────────────────────────────────────────────────────
+  // Use a preliminary amount estimate (strategy config or 0) for spend-limit
+  // pre-check. The exact amount is resolved after strategy evaluation.
+  const preliminaryAmount =
+    typeof agent.strategyConfig?.amount === "number"
+      ? (agent.strategyConfig.amount as number)
+      : typeof agent.strategyConfig?.amount === "string"
+      ? parseFloat(agent.strategyConfig.amount as string)
+      : 0;
+
+  const govCheck = await evaluateGovernanceForExecution({
+    agent,
+    amountXlm: Number.isFinite(preliminaryAmount) && preliminaryAmount > 0
+      ? preliminaryAmount
+      : 0,
+    submitRequested: submit,
+  });
+
+  if (!govCheck.allowed) {
+    await writeAuditLog({
+      agentId,
+      owner: agent.owner,
+      action: "spend_limit_blocked",
+      details: { reason: govCheck.reason, governanceSnapshot: govCheck.governance },
+    });
+    return {
+      agentId,
+      contractId: agent.contractId,
+      executed: false,
+      reason: govCheck.reason ?? "Blocked by governance policy",
+    };
+  }
+  // ────────────────────────────────────────────────────────────────────────
 
   // Convert to stroops
   const amountStroops = Math.round(decision.amountXlm * 10_000_000);
@@ -159,6 +212,34 @@ export async function executeAgentOnce(options: {
     sourceAddress
   );
 
+  const workflowSuccessStatePatch =
+    workflowConfig && Number.isFinite(observedBalanceXlm)
+      ? buildWorkflowChainSuccessStatePatch({
+          checkedAt:
+            typeof decision.statePatch?.lastCheckedAt === "string"
+              ? decision.statePatch.lastCheckedAt
+              : ctx.now.toISOString(),
+          observedBalanceXlm,
+        })
+      : null;
+
+  const logMetadata: Record<string, unknown> = {
+    contractId: agent.contractId,
+    recipient: decision.recipient,
+    amountXlm: decision.amountXlm,
+    nextExecutionAt: decision.nextExecutionAt ?? null,
+  };
+
+  if (workflowConfig && workflowSuccessStatePatch && Number.isFinite(observedBalanceXlm)) {
+    logMetadata.workflow = buildWorkflowChainLogMetadata({
+      config: workflowConfig,
+      observedBalanceXlm,
+      reason: decision.reason,
+      actionStatus: submit ? "submitted" : "built",
+      successStatePatch: workflowSuccessStatePatch,
+    });
+  }
+
   if (!submit) {
     return {
       agentId,
@@ -166,6 +247,7 @@ export async function executeAgentOnce(options: {
       executed: false,
       reason: decision.reason ?? "Built XDR only (submit=false)",
       nextExecutionAt: decision.nextExecutionAt ?? null,
+      logMetadata,
       xdr,
     };
   }
@@ -175,7 +257,7 @@ export async function executeAgentOnce(options: {
     const signedXdr = signWithSecretKey
       ? signSorobanXdrWithSecret({ xdr, secretKey: signWithSecretKey })
       : xdr;
-    const result = await submitSorobanTx(signedXdr);
+    const result = await retryWithBackoff(() => submitSorobanTx(signedXdr));
     const success = result.status === "SUCCESS" || result.status === "PENDING";
 
     await addExecutionLog({
@@ -186,14 +268,27 @@ export async function executeAgentOnce(options: {
       txHash: result.hash,
       failureReason: success ? null : "Execution failed on-chain",
       metadata: {
-        contractId: agent.contractId,
-        recipient: decision.recipient,
-        amountXlm: decision.amountXlm,
-        nextExecutionAt: decision.nextExecutionAt ?? null,
+        ...logMetadata,
+        workflow:
+          workflowConfig && workflowSuccessStatePatch && Number.isFinite(observedBalanceXlm)
+            ? buildWorkflowChainLogMetadata({
+                config: workflowConfig,
+                observedBalanceXlm,
+                reason: decision.reason,
+                actionStatus: success ? "submitted" : "failed",
+                successStatePatch: workflowSuccessStatePatch,
+              })
+            : logMetadata.workflow,
       },
     });
 
     if (success) {
+      if (workflowSuccessStatePatch) {
+        await updateAgentStrategy(agentId, {
+          strategyState: workflowSuccessStatePatch,
+          nextExecutionAt: decision.nextExecutionAt ?? null,
+        });
+      }
       const nowIso = new Date().toISOString();
       await recordAgentExecution(agentId, {
         lastExecutionAt: nowIso,
@@ -209,6 +304,7 @@ export async function executeAgentOnce(options: {
       nextExecutionAt: decision.nextExecutionAt ?? null,
       txHash: result.hash,
       error: success ? undefined : "Execution failed on-chain",
+      logMetadata,
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -219,10 +315,17 @@ export async function executeAgentOnce(options: {
       success: false,
       failureReason: message,
       metadata: {
-        contractId: agent.contractId,
-        recipient: decision.recipient,
-        amountXlm: decision.amountXlm,
-        nextExecutionAt: decision.nextExecutionAt ?? null,
+        ...logMetadata,
+        workflow:
+          workflowConfig && workflowSuccessStatePatch && Number.isFinite(observedBalanceXlm)
+            ? buildWorkflowChainLogMetadata({
+                config: workflowConfig,
+                observedBalanceXlm,
+                reason: decision.reason,
+                actionStatus: "failed",
+                successStatePatch: workflowSuccessStatePatch,
+              })
+            : logMetadata.workflow,
       },
     });
 
@@ -233,6 +336,7 @@ export async function executeAgentOnce(options: {
       reason: decision.reason,
       nextExecutionAt: decision.nextExecutionAt ?? null,
       error: message,
+      logMetadata,
     };
   }
 }

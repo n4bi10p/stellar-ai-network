@@ -55,6 +55,28 @@ interface ExecutionLogItem {
   createdAt: string;
 }
 
+function getRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  return value as Record<string, unknown>;
+}
+
+function getString(value: unknown): string | null {
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+}
+
+function getNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function shortAddress(address: string | null): string | null {
+  if (!address) return null;
+  if (address.length <= 14) return address;
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+}
+
 export default function AgentDetailPage() {
   const params = useParams();
   const contractId = params.id as string;
@@ -311,10 +333,11 @@ export default function AgentDetailPage() {
               txHash: submitData.hash,
               recordExecution: true,
               nextExecutionAt: data.nextExecutionAt ?? null,
-              metadata: {
-                contractId,
-                reason: data.reason ?? null,
-              },
+              metadata:
+                (data.logMetadata as Record<string, unknown> | undefined) ?? {
+                  contractId,
+                  reason: data.reason ?? null,
+                },
             }),
           });
           await fetchExecutionLogs(data.agentStoreId as string);
@@ -748,38 +771,75 @@ export default function AgentDetailPage() {
                     </div>
                   ) : (
                     executionLogs.slice(0, 10).map((log) => (
-                      <div
-                        key={log.id}
-                        className="border border-border/30 bg-surface/90 px-3 py-3 text-[10px] tracking-wider"
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <div className={log.success ? "text-accent" : "text-red-400"}>
-                            {log.success ? "SUCCESS" : "FAILED"} {/* {log.triggerSource} */}
-                          </div>
-                          <div className="text-muted">
-                            {new Date(log.createdAt).toLocaleString()}
-                          </div>
-                        </div>
-                        <div className="mt-1 text-muted">
-                          MODE: {log.executionMode ?? "unknown"}
-                        </div>
-                        {log.failureReason && (
-                          <div className="mt-1 text-red-400">
-                            ERROR: {log.failureReason}
-                          </div>
-                        )}
-                        {log.txHash && (
-                          <a
-                            href={txExplorerUrl(log.txHash)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="mt-1 inline-flex items-center gap-1 text-accent underline"
+                      (() => {
+                        const workflow = getRecord(log.metadata?.workflow);
+                        const condition = getRecord(workflow?.condition);
+                        const action = getRecord(workflow?.action);
+                        const notify = getRecord(workflow?.notify);
+                        const observedBalance = getNumber(condition?.observedBalanceXlm);
+                        const threshold = getNumber(condition?.thresholdXlm);
+                        const actionAmount = getNumber(action?.amountXlm);
+                        const actionRecipient = shortAddress(getString(action?.recipient));
+                        const notifyMessage = getString(notify?.message);
+                        const notifyEnabled = notify?.enabled === true;
+
+                        return (
+                          <div
+                            key={log.id}
+                            className="border border-border/30 bg-surface/90 px-3 py-3 text-[10px] tracking-wider"
                           >
-                            <ExternalLink className="h-3 w-3" />
-                            View transaction
-                          </a>
-                        )}
-                      </div>
+                            <div className="flex items-center justify-between gap-3">
+                              <div className={log.success ? "text-accent" : "text-red-400"}>
+                                {log.success ? "SUCCESS" : "FAILED"}
+                              </div>
+                              <div className="text-muted">
+                                {new Date(log.createdAt).toLocaleString()}
+                              </div>
+                            </div>
+                            <div className="mt-1 text-muted">
+                              MODE: {log.executionMode ?? "unknown"}
+                            </div>
+                            {workflow && (
+                              <div className="mt-2 border border-border/20 bg-surface/70 px-2 py-2 text-[9px] leading-relaxed text-muted">
+                                <div>WORKFLOW_V1: CONDITION -&gt; ACTION -&gt; NOTIFY</div>
+                                {observedBalance !== null && threshold !== null && (
+                                  <div>
+                                    CONDITION: BALANCE {observedBalance.toFixed(2)} XLM &lt;{" "}
+                                    {threshold.toFixed(2)} XLM
+                                  </div>
+                                )}
+                                {actionAmount !== null && actionRecipient && (
+                                  <div>
+                                    ACTION: SEND {actionAmount} XLM TO {actionRecipient}
+                                  </div>
+                                )}
+                                <div>
+                                  NOTIFY:{" "}
+                                  {notifyEnabled && notifyMessage
+                                    ? notifyMessage
+                                    : "disabled"}
+                                </div>
+                              </div>
+                            )}
+                            {log.failureReason && (
+                              <div className="mt-1 text-red-400">
+                                ERROR: {log.failureReason}
+                              </div>
+                            )}
+                            {log.txHash && (
+                              <a
+                                href={txExplorerUrl(log.txHash)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="mt-1 inline-flex items-center gap-1 text-accent underline"
+                              >
+                                <ExternalLink className="h-3 w-3" />
+                                View transaction
+                              </a>
+                            )}
+                          </div>
+                        );
+                      })()
                     ))
                   )}
                 </div>

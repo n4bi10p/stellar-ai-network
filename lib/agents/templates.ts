@@ -7,7 +7,7 @@ export interface AgentTemplate {
   description: string;
   strategy: string;
   /** Default parameters for this template */
-  defaults: Record<string, string | number>;
+  defaults: Record<string, unknown>;
   /** HUD-style icon label */
   icon: string;
 }
@@ -84,6 +84,24 @@ export const AGENT_TEMPLATES: AgentTemplate[] = [
       intervalSeconds: 86400,
     },
     icon: "🏦",
+  },
+  {
+    id: "workflow_chain",
+    name: "Workflow Composer",
+    description:
+      "Condition -> action -> notification chain. Triggers a transfer when balance drops below a threshold and includes an in-app reminder context.",
+    strategy: "workflow_chain",
+    defaults: {
+      triggerType: "balance_below",
+      thresholdXlm: 50,
+      checkIntervalSeconds: 300,
+      actionType: "send_xlm",
+      recipient: "",
+      amountXlm: 5,
+      notifyInApp: true,
+      notifyMessage: "Balance below threshold. Workflow triggered.",
+    },
+    icon: "🧩",
   },
 ];
 

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { deleteCachedByPrefix } from "@/lib/cache/cache";
 import { getPrismaClient } from "@/lib/db/client";
 
 export async function POST(request: NextRequest) {
@@ -62,6 +63,8 @@ export async function POST(request: NextRequest) {
         throw createError;
       }
     }
+
+    deleteCachedByPrefix("analytics:metrics:");
 
     return NextResponse.json({
       success: true,

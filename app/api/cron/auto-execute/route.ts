@@ -3,7 +3,6 @@ import { getAgentById } from "@/lib/store/agents";
 import { executeAgentWithSecret } from "@/lib/agents/executor";
 import { getHourlyWindow, loadDueEvents, markIdempotentOnce } from "@/lib/scheduler/state";
 import { capItems } from "@/lib/scheduler/budget";
-import { retryWithBackoff } from "@/lib/scheduler/retry";
 import { isFullAuto } from "@/lib/agents/modes";
 import { decryptAgentSecret } from "@/lib/security/key-vault";
 
@@ -48,9 +47,7 @@ export async function GET(request: Request) {
 
       try {
         const secretKey = decryptAgentSecret(agent.fullAuto?.encryptedSecret);
-        const result = await retryWithBackoff(() =>
-          executeAgentWithSecret({ agentId: agent.id, secretKey })
-        );
+        const result = await executeAgentWithSecret({ agentId: agent.id, secretKey });
 
         outcomes.push({
           eventId: event.eventId,

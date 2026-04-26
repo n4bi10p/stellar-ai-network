@@ -16,6 +16,7 @@ vi.mock("@/lib/db/client", () => ({
 const getAgentById = vi.fn();
 const recordAgentExecution = vi.fn();
 const updateAgent = vi.fn();
+const updateAgentStrategy = vi.fn();
 const addExecutionLog = vi.fn();
 const listExecutionLogsByAgent = vi.fn();
 const getAgentsByOwner = vi.fn();
@@ -26,6 +27,7 @@ vi.mock("@/lib/store/agents", () => ({
   recordAgentExecution,
   updateAgent,
   getAgentsByOwner,
+  updateAgentStrategy,
 }));
 
 vi.mock("@/lib/store/execution-logs", () => ({
@@ -70,6 +72,7 @@ describe("execution routes", () => {
     getAgentById.mockResolvedValue({
       id: "agent-1",
       name: "AGENT_ONE",
+      strategy: "recurring_payment",
     });
     addExecutionLog.mockResolvedValue({
       id: "log-1",
@@ -108,6 +111,58 @@ describe("execution routes", () => {
     );
     expect(recordAgentExecution).toHaveBeenCalledTimes(1);
     expect(updateAgent).toHaveBeenCalledWith("agent-1", { txHash: "tx-1" });
+  });
+
+  it("applies workflow success state when workflow execution is logged", async () => {
+    getAgentById.mockResolvedValue({
+      id: "agent-1",
+      name: "LOW_BALANCE_WORKFLOW",
+      strategy: "workflow_chain",
+    });
+    addExecutionLog.mockResolvedValue({
+      id: "log-2",
+      agentId: "agent-1",
+      triggerSource: "manual_assisted",
+      success: true,
+      txHash: "tx-2",
+      createdAt: "2026-03-20T11:00:00.000Z",
+    });
+
+    const { POST } = await import("@/app/api/agents/[id]/executions/route");
+    const response = await POST(
+      new NextRequest("http://localhost/api/agents/agent-1/executions", {
+        method: "POST",
+        body: JSON.stringify({
+          triggerSource: "manual_assisted",
+          executionMode: "assisted_auto",
+          success: true,
+          txHash: "tx-2",
+          recordExecution: true,
+          nextExecutionAt: "2026-03-20T12:00:00.000Z",
+          metadata: {
+            workflow: {
+              successStatePatch: {
+                workflowConditionState: "triggered",
+                lastWorkflowTriggeredAt: "2026-03-20T11:00:00.000Z",
+                lastWorkflowTriggeredBalanceXlm: 12.5,
+              },
+            },
+          },
+        }),
+        headers: { "Content-Type": "application/json" },
+      }),
+      { params: Promise.resolve({ id: "agent-1" }) }
+    );
+
+    expect(response.status).toBe(200);
+    expect(updateAgentStrategy).toHaveBeenCalledWith("agent-1", {
+      strategyState: {
+        workflowConditionState: "triggered",
+        lastWorkflowTriggeredAt: "2026-03-20T11:00:00.000Z",
+        lastWorkflowTriggeredBalanceXlm: 12.5,
+      },
+      nextExecutionAt: "2026-03-20T12:00:00.000Z",
+    });
   });
 
   it("returns owner-scoped execution summary", async () => {

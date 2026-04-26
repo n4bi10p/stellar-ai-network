@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import {
+  buildRateLimitKey,
+  checkRateLimit,
+  rateLimitResponse,
+} from "@/lib/middleware/rateLimiter";
 import { parsedCommandSchema } from "@/lib/utils/validation";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
@@ -7,6 +12,17 @@ const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
 export async function POST(request: NextRequest) {
   try {
+    const rateLimit = checkRateLimit(buildRateLimitKey(request, "ai:parse"), {
+      maxRequests: 20,
+      windowMs: 60_000,
+    });
+    if (!rateLimit.allowed) {
+      return rateLimitResponse(
+        rateLimit,
+        "Too many AI parse requests. Please wait a moment before trying again."
+      );
+    }
+
     const { input } = await request.json();
 
     if (!input || typeof input !== "string") {
@@ -48,6 +64,7 @@ Supported agent types:
 3. "price_alert" - Alert or execute action when price changes
 4. "dca_bot" - Dollar-cost averaging: send fixed amounts regularly
 5. "savings_sweep" - Automatically move funds to savings
+6. "workflow_chain" - Condition -> action -> notification automation chain
 
 Rules:
 - Use "greet" for greetings or small talk.
@@ -79,8 +96,8 @@ For create_agent:
   "confidence": 0.0,
   "agentIntent": {
     "name": "Agent Name",
-    "strategy": "recurring_payment" | "auto_rebalance" | "price_alert" | "dca_bot" | "savings_sweep",
-    "templateId": "auto_rebalance" | "bill_scheduler" | "price_alert" | "dca_bot" | "savings_sweep",
+    "strategy": "recurring_payment" | "auto_rebalance" | "price_alert" | "dca_bot" | "savings_sweep" | "workflow_chain",
+    "templateId": "auto_rebalance" | "bill_scheduler" | "price_alert" | "dca_bot" | "savings_sweep" | "workflow_chain",
     "summary": "Clear explanation of what this agent does",
     "missingFields": ["field1", "field2"],
     "strategyConfig": {
@@ -98,6 +115,7 @@ For check_balance or greet:
 Examples:
 "Send 100 XLM to GABC..." → {"action":"send_xlm","confidence":0.95,"destination":"GABC...","amount":"100"}
 "Alert me when XLM drops below 10 cents" → {"action":"create_agent","confidence":0.88,"agentIntent":{"name":"XLM Price Alert","strategy":"price_alert","templateId":"price_alert","summary":"Monitors XLM/USD price and alerts when it drops below $0.10","missingFields":["alertAction"],"strategyConfig":{"lowerBound":0.10}}}
+"If my balance drops below 20 XLM, send 5 XLM to GABC... and notify me" → {"action":"create_agent","confidence":0.9,"agentIntent":{"name":"Low Balance Workflow","strategy":"workflow_chain","templateId":"workflow_chain","summary":"Checks wallet balance and sends 5 XLM to the destination when balance drops below 20, with in-app notification context.","missingFields":[],"strategyConfig":{"triggerType":"balance_below","thresholdXlm":20,"checkIntervalSeconds":300,"actionType":"send_xlm","recipient":"GABC...","amountXlm":5,"notifyInApp":true,"notifyMessage":"Balance below 20 XLM"}}}
 "How much XLM do I have?" → {"action":"check_balance","confidence":0.98}
 "Hello!" → {"action":"greet","confidence":0.99}
 

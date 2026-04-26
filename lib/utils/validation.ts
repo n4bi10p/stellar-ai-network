@@ -6,6 +6,7 @@ export const supportedAgentStrategySchema = z.enum([
   "price_alert",
   "dca_bot",
   "savings_sweep",
+  "workflow_chain",
 ]);
 
 // Stellar address: starts with G, 56 chars
@@ -91,12 +92,91 @@ export const savingsSweepConfigSchema = z.object({
   intervalSeconds: positiveNumberSchema,
 });
 
+const workflowChainLegacyConfigSchema = z.object({
+  triggerType: z.literal("balance_below"),
+  thresholdXlm: positiveNumberSchema,
+  checkIntervalSeconds: positiveNumberSchema,
+  actionType: z.literal("send_xlm"),
+  recipient: stellarAddressSchema,
+  amountXlm: positiveNumberSchema,
+  notifyInApp: z.boolean().optional(),
+  notifyMessage: z.string().trim().min(1).max(240).optional(),
+});
+
+const workflowChainConditionSchema = z.object({
+  type: z.literal("balance_below"),
+  thresholdXlm: positiveNumberSchema,
+  checkIntervalSeconds: positiveNumberSchema,
+});
+
+const workflowChainActionSchema = z.object({
+  type: z.literal("send_xlm"),
+  recipient: stellarAddressSchema,
+  amountXlm: positiveNumberSchema,
+});
+
+const workflowChainNotifySchema = z.object({
+  channel: z.literal("in_app").default("in_app"),
+  enabled: z.boolean().default(true),
+  message: z.string().trim().min(1).max(240),
+});
+
+const workflowChainCanonicalConfigSchema = z.object({
+  version: z.literal(1).default(1),
+  condition: workflowChainConditionSchema,
+  action: workflowChainActionSchema,
+  notify: workflowChainNotifySchema,
+});
+
+export type WorkflowChainConfig = z.infer<typeof workflowChainCanonicalConfigSchema>;
+
+function toWorkflowChainCanonicalConfig(
+  value: z.infer<typeof workflowChainLegacyConfigSchema> | WorkflowChainConfig
+): WorkflowChainConfig {
+  if ("condition" in value && "action" in value && "notify" in value) {
+    return {
+      version: 1,
+      condition: value.condition,
+      action: value.action,
+      notify: {
+        channel: "in_app",
+        enabled: value.notify.enabled,
+        message: value.notify.message,
+      },
+    };
+  }
+
+  return {
+    version: 1,
+    condition: {
+      type: "balance_below",
+      thresholdXlm: value.thresholdXlm,
+      checkIntervalSeconds: value.checkIntervalSeconds,
+    },
+    action: {
+      type: "send_xlm",
+      recipient: value.recipient,
+      amountXlm: value.amountXlm,
+    },
+    notify: {
+      channel: "in_app",
+      enabled: value.notifyInApp ?? true,
+      message: value.notifyMessage?.trim() || "Workflow condition matched",
+    },
+  };
+}
+
+export const workflowChainConfigSchema = z
+  .union([workflowChainLegacyConfigSchema, workflowChainCanonicalConfigSchema])
+  .transform((value) => toWorkflowChainCanonicalConfig(value));
+
 export const strategyConfigSchemas = {
   auto_rebalance: autoRebalanceConfigSchema,
   recurring_payment: recurringPaymentConfigSchema,
   price_alert: priceAlertConfigSchema,
   dca_bot: dcaBotConfigSchema,
   savings_sweep: savingsSweepConfigSchema,
+  workflow_chain: workflowChainConfigSchema,
 } as const;
 
 export const agentIntentSchema = z
@@ -135,4 +215,11 @@ export function validateStrategyConfig(
   strategyConfig: Record<string, unknown>
 ) {
   return strategyConfigSchemas[strategy].safeParse(strategyConfig);
+}
+
+export function parseWorkflowChainConfig(
+  strategyConfig: Record<string, unknown> | undefined
+): WorkflowChainConfig | null {
+  const parsed = workflowChainConfigSchema.safeParse(strategyConfig ?? {});
+  return parsed.success ? parsed.data : null;
 }

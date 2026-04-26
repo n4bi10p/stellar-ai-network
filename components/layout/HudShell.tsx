@@ -9,6 +9,7 @@ import {
   Store,
   BarChart3,
   Activity,
+  Workflow,
   Menu,
   X,
 } from "lucide-react";
@@ -20,6 +21,7 @@ import { APP_VERSION } from "@/lib/utils/constants";
 const navItems = [
   { label: "./dashboard", href: "/", icon: LayoutGrid },
   { label: "./agents", href: "/agents", icon: Users },
+  { label: "./workflows", href: "/workflows", icon: Workflow },
   { label: "./marketplace", href: "/marketplace", icon: Store },
   { label: "./analytics", href: "/analytics", icon: BarChart3 },
   { label: "./metrics", href: "/dashboard/metrics", icon: Activity },

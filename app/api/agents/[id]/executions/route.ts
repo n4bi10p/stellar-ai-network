@@ -1,6 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { addExecutionLog, listExecutionLogsByAgent } from "@/lib/store/execution-logs";
-import { getAgentById, recordAgentExecution, updateAgent } from "@/lib/store/agents";
+import {
+  getAgentById,
+  recordAgentExecution,
+  updateAgent,
+  updateAgentStrategy,
+} from "@/lib/store/agents";
+
+function getRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  return value as Record<string, unknown>;
+}
 
 export async function GET(
   _request: NextRequest,
@@ -59,6 +72,19 @@ export async function POST(
       failureReason: failureReason ?? null,
       metadata: (metadata as Record<string, unknown> | undefined) ?? undefined,
     });
+
+    const metadataRecord = getRecord(metadata);
+    const workflowMetadata = getRecord(metadataRecord?.workflow);
+    const workflowSuccessStatePatch = getRecord(
+      workflowMetadata?.successStatePatch
+    );
+
+    if (success && agent.strategy === "workflow_chain" && workflowSuccessStatePatch) {
+      await updateAgentStrategy(id, {
+        strategyState: workflowSuccessStatePatch,
+        nextExecutionAt: nextExecutionAt ?? null,
+      });
+    }
 
     if (recordExecution) {
       await recordAgentExecution(id, {

@@ -1,50 +1,36 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { RefreshCw, Loader2, Users, Wallet, BarChart3, Zap, Activity, TrendingUp } from "lucide-react";
 import { HudShell } from "@/components/layout/HudShell";
-
-interface PlatformMetrics {
-  metrics: {
-    totalUsers: number;
-    usersWithWallet: number;
-    totalAgents: number;
-    runningAgents: number;
-    successfulTransactions: number;
-    totalExecutionAttempts: number;
-    successRate: number;
-    totalEvents: number;
-  };
-  breakdowns: {
-    executionStatus: Array<{ status: string; count: number }>;
-    topStrategies: Array<{ strategy: string; count: number }>;
-    transactionType?: Array<{ type: string; count: number }>;
-  };
-  timestamp: string;
-}
+import type {
+  AnalyticsPeriod,
+  PlatformMetricsResponse,
+} from "@/lib/analytics/platform-metrics";
 
 export default function PlatformAnalyticsPage() {
-  const [data, setData] = useState<PlatformMetrics | null>(null);
+  const [data, setData] = useState<PlatformMetricsResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [period, setPeriod] = useState<AnalyticsPeriod>("7d");
 
-  const fetchMetrics = async () => {
+  const fetchMetrics = useCallback(async () => {
     try {
-      const res = await fetch("/api/internal/analytics-metrics");
+      const res = await fetch(`/api/internal/analytics-metrics?period=${period}`);
       if (!res.ok) throw new Error("fetch failed");
       const json = await res.json();
-      setData(json);
+      setData(json as PlatformMetricsResponse);
     } catch (err) {
       console.error("Fetch error:", err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [period]);
 
   useEffect(() => {
     fetchMetrics();
     const interval = setInterval(fetchMetrics, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchMetrics]);
 
   const bar = (value: number, max: number, width = 20): string => {
     if (max === 0) return "░".repeat(width);
@@ -75,6 +61,21 @@ export default function PlatformAnalyticsPage() {
                 className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`}
               />
             </button>
+            <div className="ml-2 flex items-center gap-2">
+              {(["7d", "30d"] as const).map((value) => (
+                <button
+                  key={value}
+                  onClick={() => setPeriod(value)}
+                  className={`border px-2 py-1 text-[10px] tracking-widest transition-colors ${
+                    period === value
+                      ? "border-accent/60 bg-accent/10 text-accent"
+                      : "border-border/40 text-muted hover:text-foreground"
+                  }`}
+                >
+                  {value.toUpperCase()}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -247,6 +248,35 @@ export default function PlatformAnalyticsPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Daily History */}
+              {data.history.length > 0 && (
+                <div className="mb-6">
+                  <div className="mb-3 text-xs font-semibold tracking-widest text-muted">
+                    {">> DAILY_HISTORY"}
+                  </div>
+                  <div className="border border-border/40 bg-surface/80 px-5 py-4">
+                    <div className="space-y-2 font-mono text-xs">
+                      {data.history.slice(-7).map((item) => (
+                        <div key={item.date} className="grid grid-cols-4 gap-3">
+                          <div className="text-muted">
+                            {new Date(item.date).toLocaleDateString()}
+                          </div>
+                          <div className="text-accent">
+                            DAU {item.dau} / WAU {item.wau}
+                          </div>
+                          <div className="text-accent">
+                            EXEC {item.executions} / {item.successRate.toFixed(1)}%
+                          </div>
+                          <div className="text-muted">
+                            RET {item.retention7d.toFixed(1)}%
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Summary Stats */}
               <div className="border border-border/40 bg-surface/80 px-5 py-4">

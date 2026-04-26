@@ -30,7 +30,8 @@ export interface ParsedCommand {
       | "recurring_payment"
       | "price_alert"
       | "dca_bot"
-      | "savings_sweep";
+      | "savings_sweep"
+      | "workflow_chain";
     templateId?: string;
     summary?: string;
     missingFields?: string[];

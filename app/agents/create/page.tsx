@@ -747,6 +747,130 @@ function CreateAgentInner() {
                 </div>
               )}
 
+              {strategy === "workflow_chain" && (
+                <div>
+                  <label className="mb-2 block text-[10px] tracking-widest text-muted">
+                    WORKFLOW_CHAIN_CONFIG
+                  </label>
+                  <div className="space-y-3 border border-border/40 bg-surface/80 px-4 py-3">
+                    <div className="text-[9px] tracking-wider text-muted">
+                      Condition -&gt; Action -&gt; Notification
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div>
+                        <span className="mb-1 block text-[9px] tracking-widest text-muted">TRIGGER_TYPE</span>
+                        <select
+                          value={(strategyConfig.triggerType as string | undefined) ?? "balance_below"}
+                          onChange={(e) =>
+                            setStrategyConfig((prev) => ({ ...prev, triggerType: e.target.value }))
+                          }
+                          disabled={isWorking || txStatus === "success"}
+                          className="w-full border border-border/40 bg-surface/90 px-3 py-2 text-sm outline-none focus:border-accent/50 disabled:opacity-50"
+                        >
+                          <option value="balance_below">balance_below</option>
+                        </select>
+                      </div>
+                      <div>
+                        <span className="mb-1 block text-[9px] tracking-widest text-muted">ACTION_TYPE</span>
+                        <select
+                          value={(strategyConfig.actionType as string | undefined) ?? "send_xlm"}
+                          onChange={(e) =>
+                            setStrategyConfig((prev) => ({ ...prev, actionType: e.target.value }))
+                          }
+                          disabled={isWorking || txStatus === "success"}
+                          className="w-full border border-border/40 bg-surface/90 px-3 py-2 text-sm outline-none focus:border-accent/50 disabled:opacity-50"
+                        >
+                          <option value="send_xlm">send_xlm</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                      <div>
+                        <span className="mb-1 block text-[9px] tracking-widest text-muted">THRESHOLD_XLM</span>
+                        <input
+                          type="number"
+                          value={(strategyConfig.thresholdXlm as number | undefined) ?? 50}
+                          onChange={(e) =>
+                            setStrategyConfig((prev) => ({ ...prev, thresholdXlm: Number(e.target.value || 0) }))
+                          }
+                          disabled={isWorking || txStatus === "success"}
+                          className="w-full border border-border/40 bg-surface/90 px-3 py-2 text-sm outline-none focus:border-accent/50 disabled:opacity-50"
+                        />
+                      </div>
+                      <div>
+                        <span className="mb-1 block text-[9px] tracking-widest text-muted">CHECK_INTERVAL_SECONDS</span>
+                        <input
+                          type="number"
+                          value={(strategyConfig.checkIntervalSeconds as number | undefined) ?? 300}
+                          onChange={(e) =>
+                            setStrategyConfig((prev) => ({
+                              ...prev,
+                              checkIntervalSeconds: Number(e.target.value || 0),
+                            }))
+                          }
+                          disabled={isWorking || txStatus === "success"}
+                          className="w-full border border-border/40 bg-surface/90 px-3 py-2 text-sm outline-none focus:border-accent/50 disabled:opacity-50"
+                        />
+                      </div>
+                      <div>
+                        <span className="mb-1 block text-[9px] tracking-widest text-muted">AMOUNT_XLM</span>
+                        <input
+                          type="number"
+                          value={(strategyConfig.amountXlm as number | undefined) ?? 5}
+                          onChange={(e) =>
+                            setStrategyConfig((prev) => ({ ...prev, amountXlm: Number(e.target.value || 0) }))
+                          }
+                          disabled={isWorking || txStatus === "success"}
+                          className="w-full border border-border/40 bg-surface/90 px-3 py-2 text-sm outline-none focus:border-accent/50 disabled:opacity-50"
+                        />
+                      </div>
+                      <div className="flex items-end">
+                        <label className="flex w-full items-center gap-2 border border-border/40 bg-surface/90 px-3 py-2 text-[10px] tracking-wider text-muted">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(strategyConfig.notifyInApp ?? true)}
+                            onChange={(e) =>
+                              setStrategyConfig((prev) => ({ ...prev, notifyInApp: e.target.checked }))
+                            }
+                            disabled={isWorking || txStatus === "success"}
+                          />
+                          NOTIFY_IN_APP
+                        </label>
+                      </div>
+                    </div>
+
+                    <div>
+                      <span className="mb-1 block text-[9px] tracking-widest text-muted">RECIPIENT_ADDRESS</span>
+                      <input
+                        type="text"
+                        value={(strategyConfig.recipient as string) ?? ""}
+                        onChange={(e) =>
+                          setStrategyConfig((prev) => ({ ...prev, recipient: e.target.value }))
+                        }
+                        placeholder="G..."
+                        disabled={isWorking || txStatus === "success"}
+                        className="w-full border border-border/40 bg-surface/90 px-3 py-2 text-sm outline-none placeholder:text-muted/40 focus:border-accent/50 disabled:opacity-50"
+                      />
+                    </div>
+
+                    <div>
+                      <span className="mb-1 block text-[9px] tracking-widest text-muted">NOTIFY_MESSAGE</span>
+                      <input
+                        type="text"
+                        value={(strategyConfig.notifyMessage as string | undefined) ?? "Balance below threshold. Workflow triggered."}
+                        onChange={(e) =>
+                          setStrategyConfig((prev) => ({ ...prev, notifyMessage: e.target.value }))
+                        }
+                        disabled={isWorking || txStatus === "success"}
+                        className="w-full border border-border/40 bg-surface/90 px-3 py-2 text-sm outline-none placeholder:text-muted/40 focus:border-accent/50 disabled:opacity-50"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Deploy Button */}
               {txStatus !== "success" && (
                 <button

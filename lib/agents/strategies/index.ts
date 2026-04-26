@@ -4,6 +4,7 @@ import { decidePriceAlert } from "./price_alert";
 import { decideAutoRebalance } from "./auto_rebalance";
 import { decideDcaBot } from "./dca_bot";
 import { decideSavingsSweep } from "./savings_sweep";
+import { decideWorkflowChain } from "./workflow_chain";
 
 export type { StrategyContext, StrategyDecision, StrategyId } from "./types";
 
@@ -17,6 +18,7 @@ export async function decideStrategy(
   if (id === "auto_rebalance") return decideAutoRebalance(ctx);
   if (id === "dca_bot") return decideDcaBot(ctx);
   if (id === "savings_sweep") return decideSavingsSweep(ctx);
+  if (id === "workflow_chain") return decideWorkflowChain(ctx);
 
   return { shouldExecute: false, reason: `Unknown strategy: ${String(id)}`, nextExecutionAt: null };
 }

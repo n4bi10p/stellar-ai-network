@@ -1,6 +1,7 @@
 // PATCH /api/agents/[id] — Update agent metadata (tx hash after deploy success)
 
 import { NextRequest, NextResponse } from "next/server";
+import { deleteCachedByPrefix } from "@/lib/cache/cache";
 import {
   updateAgentTxHash,
   getAgentById,
@@ -62,6 +63,9 @@ export async function PATCH(
         }).catch(() => {}); // Silently fail if analytics unavailable
       }
     }
+
+    deleteCachedByPrefix("agents:list:");
+    deleteCachedByPrefix("analytics:metrics:");
 
     return NextResponse.json({ success: true });
   } catch (err) {

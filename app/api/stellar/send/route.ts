@@ -1,9 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
+import {
+  buildRateLimitKey,
+  checkRateLimit,
+  rateLimitResponse,
+} from "@/lib/middleware/rateLimiter";
 import { buildSendXLM } from "@/lib/stellar/client";
 import { sendTransactionSchema } from "@/lib/utils/validation";
 
 export async function POST(request: NextRequest) {
   try {
+    const rateLimit = checkRateLimit(buildRateLimitKey(request, "stellar:send"), {
+      maxRequests: 30,
+      windowMs: 60_000,
+    });
+    if (!rateLimit.allowed) {
+      return rateLimitResponse(
+        rateLimit,
+        "Too many transaction build requests. Please try again shortly."
+      );
+    }
+
     const body = await request.json();
 
     // Validate input
