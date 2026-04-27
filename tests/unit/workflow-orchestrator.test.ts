@@ -35,12 +35,9 @@ import * as governanceMod from "@/lib/agents/governance";
 import * as agentsMod from "@/lib/store/agents";
 
 // Typed as any for mock flexibility
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const exec = vi.mocked(executorMod.executeAgentOnce) as any;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const gov  = vi.mocked(governanceMod.evaluateGovernanceForExecution) as any;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const agts = vi.mocked(agentsMod.getAgentById) as any;
+const exec = vi.mocked(executorMod.executeAgentOnce) as ReturnType<typeof vi.fn>;
+const gov  = vi.mocked(governanceMod.evaluateGovernanceForExecution) as ReturnType<typeof vi.fn>;
+const agts = vi.mocked(agentsMod.getAgentById) as ReturnType<typeof vi.fn>;
 
 const MOCK_AGENT = {
   id: "agent-1",

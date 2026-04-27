@@ -362,7 +362,7 @@ export default function WorkflowDetailPage() {
             {/* Live run result summary */}
             {liveSteps && (
               <div className="mt-4 border border-border/40 bg-surface/80 px-4 py-3">
-                <div className="text-[10px] tracking-widest text-muted mb-2">// LAST_RUN_SUMMARY</div>
+                <div className="text-[10px] tracking-widest text-muted mb-2">{`// LAST_RUN_SUMMARY`}</div>
                 <div className="flex items-center gap-4 text-[10px] tracking-wider">
                   <span className="text-accent">✓ {liveSteps.filter((s) => s.status === "success" || s.status === "dry_run").length} ran</span>
                   <span className="text-red-400">✗ {liveSteps.filter((s) => s.status === "failed").length} failed</span>

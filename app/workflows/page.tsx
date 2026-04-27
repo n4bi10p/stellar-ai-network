@@ -77,7 +77,7 @@ export default function WorkflowsPage() {
         <div className="flex-1 p-3 sm:p-6">
           {/* Feature description */}
           <div className="mb-6 border border-accent/20 bg-accent/5 px-5 py-4">
-            <div className="text-[10px] font-semibold tracking-widest text-accent mb-2">// ABOUT_WORKFLOW_ORCHESTRATOR</div>
+            <div className="text-[10px] font-semibold tracking-widest text-accent mb-2">{`// ABOUT_WORKFLOW_ORCHESTRATOR`}</div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-[10px] tracking-wider text-muted">
               <div>
                 <div className="text-foreground font-semibold mb-1">CHAIN_AGENTS</div>
