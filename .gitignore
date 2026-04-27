@@ -41,6 +41,8 @@ screen.png
 # rust / soroban build artifacts
 contracts/agent/target/
 data/agents.json
+data/execution-logs.json
+data/.scheduler-state*.json
 LEVEL5_SUBMISSION_EVIDENCE.md
 CODEBASE_ANALYSIS.md
 
