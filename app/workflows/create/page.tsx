@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, Plus, Trash2, Loader2, AlertCircle, RefreshCw } from "lucide-react";
@@ -112,9 +112,9 @@ function AgentSelect({ value, agents, loading, onChange }: AgentSelectProps) {
   );
 }
 
-// ── Page ──────────────────────────────────────────────────────────────────────
+// ── Inner form (uses useSearchParams — must be inside Suspense) ───────────────
 
-export default function CreateWorkflowPage() {
+function CreateWorkflowForm() {
   const router  = useRouter();
   const params  = useSearchParams();
   const { connected, address } = useWallet();
@@ -125,11 +125,9 @@ export default function CreateWorkflowPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError]           = useState<string | null>(null);
 
-  // Agent list
   const [agents, setAgents]           = useState<AgentOption[]>([]);
   const [agentsLoading, setAgLoading] = useState(false);
 
-  // Load agents for dropdown
   const loadAgents = useCallback(async () => {
     if (!address) return;
     setAgLoading(true);
@@ -145,7 +143,7 @@ export default function CreateWorkflowPage() {
       }));
       setAgents(list);
     } catch {
-      // silently ignore — fallback to manual paste
+      // silently ignore — user can still type an ID manually
     } finally {
       setAgLoading(false);
     }
@@ -155,7 +153,7 @@ export default function CreateWorkflowPage() {
     if (connected && address) loadAgents();
   }, [connected, address, loadAgents]);
 
-  // Pre-fill from template query param (after agents load)
+  // Pre-fill from template query param
   useEffect(() => {
     const tpl = params?.get("template");
     if (!tpl || !TEMPLATE_STEP_NAMES[tpl]) return;
@@ -173,7 +171,7 @@ export default function CreateWorkflowPage() {
     setName(TEMPLATE_NAMES[tpl] ?? "");
   }, [params]);
 
-  // ── Step mutations ───────────────────────────────────────────────────────
+  // ── Step mutations ──────────────────────────────────────────────────────
 
   function addStep() {
     if (steps.length >= 10) return;
@@ -193,12 +191,7 @@ export default function CreateWorkflowPage() {
     setSteps((prev) =>
       prev.map((s, i) =>
         i === idx
-          ? {
-              ...s,
-              agentId,
-              // auto-fill step name from agent name if name is still empty or matches old auto-fill
-              name: s.name === "" || s.name === prev[i].agentId ? agentName : s.name,
-            }
+          ? { ...s, agentId, name: s.name === "" ? agentName : s.name }
           : s
       )
     );
@@ -212,12 +205,12 @@ export default function CreateWorkflowPage() {
     );
   }
 
-  // ── Submit ───────────────────────────────────────────────────────────────
+  // ── Submit ──────────────────────────────────────────────────────────────
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!address)      { setError("Wallet not connected"); return; }
-    if (!name.trim())  { setError("Workflow name is required"); return; }
+    if (!address)     { setError("Wallet not connected"); return; }
+    if (!name.trim()) { setError("Workflow name is required"); return; }
     if (steps.some((s) => !s.agentId.trim())) {
       setError("All steps need an agent selected");
       return;
@@ -235,13 +228,12 @@ export default function CreateWorkflowPage() {
           name:        name.trim(),
           description: description.trim() || undefined,
           steps: steps.map((s) => ({
-            stepId:         s.stepId,
-            agentId:        s.agentId.trim(),
-            name:           s.name.trim() || (agents.find((a) => a.id === s.agentId)?.name ?? s.agentId),
+            stepId:           s.stepId,
+            agentId:          s.agentId.trim(),
+            name:             s.name.trim() || (agents.find((a) => a.id === s.agentId)?.name ?? s.agentId),
             triggerCondition: s.triggerCondition,
-            passContext:    s.passContext,
-            conditionRule:
-              s.triggerCondition === "on_condition" ? s.conditionRule : undefined,
+            passContext:      s.passContext,
+            conditionRule:    s.triggerCondition === "on_condition" ? s.conditionRule : undefined,
           })),
         }),
       });
@@ -256,7 +248,7 @@ export default function CreateWorkflowPage() {
     }
   }
 
-  // ── Render ───────────────────────────────────────────────────────────────
+  // ── Render ──────────────────────────────────────────────────────────────
 
   return (
     <HudShell>
@@ -276,7 +268,7 @@ export default function CreateWorkflowPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="flex-1 p-3 sm:p-6 space-y-8">
-          {/* Error */}
+          {/* Error banner */}
           {error && (
             <div className="flex items-center gap-2 border border-red-500/30 bg-red-500/10 px-4 py-3 text-[10px] text-red-400 tracking-wider">
               <AlertCircle className="h-3.5 w-3.5 shrink-0" />
@@ -291,7 +283,7 @@ export default function CreateWorkflowPage() {
             </div>
           )}
 
-          {/* ── Workflow metadata ── */}
+          {/* ── Workflow info ── */}
           <div className="space-y-4">
             <div className="text-[10px] tracking-widest text-muted">{`// WORKFLOW_INFO`}</div>
 
@@ -329,7 +321,6 @@ export default function CreateWorkflowPage() {
             <div className="flex items-center justify-between">
               <div className="text-[10px] tracking-widest text-muted">{`// STEPS (${steps.length}/10)`}</div>
               <div className="flex items-center gap-3">
-                {/* Reload agents */}
                 {connected && (
                   <button
                     type="button"
@@ -352,7 +343,6 @@ export default function CreateWorkflowPage() {
               </div>
             </div>
 
-            {/* Agent count hint */}
             {connected && !agentsLoading && agents.length > 0 && (
               <div className="text-[9px] tracking-wider text-muted/60">
                 {agents.length} agent{agents.length !== 1 ? "s" : ""} available · select one per step below
@@ -365,7 +355,7 @@ export default function CreateWorkflowPage() {
                   key={step.stepId}
                   className="relative border border-border/40 bg-surface/80 px-4 py-4"
                 >
-                  {/* Step number */}
+                  {/* Step number bubble */}
                   <div className="absolute -top-3 left-3 flex h-5 w-5 items-center justify-center rounded-full border border-accent/40 bg-background text-[9px] font-bold text-accent">
                     {idx + 1}
                   </div>
@@ -388,7 +378,7 @@ export default function CreateWorkflowPage() {
                     <div>
                       <label className="block text-[9px] tracking-widest text-muted mb-1">
                         AGENT <span className="text-red-400">*</span>
-                        <span className="ml-2 text-muted/50 normal-case font-normal">
+                        <span className="ml-2 text-muted/50 font-normal normal-case">
                           — pick one of your deployed agents
                         </span>
                       </label>
@@ -396,9 +386,8 @@ export default function CreateWorkflowPage() {
                         value={step.agentId}
                         agents={agents}
                         loading={agentsLoading}
-                        onChange={(id, name) => handleAgentSelect(idx, id, name)}
+                        onChange={(id, agentName) => handleAgentSelect(idx, id, agentName)}
                       />
-                      {/* Show selected agent ID in small text for confirmation */}
                       {step.agentId && (
                         <div className="mt-1 text-[8px] font-mono text-muted/50 truncate">
                           id: {step.agentId}
@@ -448,9 +437,7 @@ export default function CreateWorkflowPage() {
                           />
                         </div>
                         <span className="text-[9px] tracking-widest text-muted">PASS_CONTEXT</span>
-                        <span className="text-[8px] text-muted/50">
-                          (pass txHash + result to next step)
-                        </span>
+                        <span className="text-[8px] text-muted/50">(pass txHash + result to next step)</span>
                       </label>
                     </div>
                   </div>
@@ -465,11 +452,7 @@ export default function CreateWorkflowPage() {
                         <select
                           value={step.conditionRule?.field ?? "executed"}
                           onChange={(e) =>
-                            updateConditionRule(
-                              idx, e.target.value,
-                              step.conditionRule?.operator ?? "==",
-                              step.conditionRule?.value ?? "true"
-                            )
+                            updateConditionRule(idx, e.target.value, step.conditionRule?.operator ?? "==", step.conditionRule?.value ?? "true")
                           }
                           className="rounded border border-border/40 bg-background px-2 py-1 text-[10px] tracking-wider focus:outline-none"
                         >
@@ -478,12 +461,7 @@ export default function CreateWorkflowPage() {
                         <select
                           value={step.conditionRule?.operator ?? "=="}
                           onChange={(e) =>
-                            updateConditionRule(
-                              idx,
-                              step.conditionRule?.field ?? "executed",
-                              e.target.value,
-                              step.conditionRule?.value ?? "true"
-                            )
+                            updateConditionRule(idx, step.conditionRule?.field ?? "executed", e.target.value, step.conditionRule?.value ?? "true")
                           }
                           className="rounded border border-border/40 bg-background px-2 py-1 text-[10px] tracking-wider focus:outline-none"
                         >
@@ -493,12 +471,7 @@ export default function CreateWorkflowPage() {
                           type="text"
                           value={step.conditionRule?.value ?? "true"}
                           onChange={(e) =>
-                            updateConditionRule(
-                              idx,
-                              step.conditionRule?.field ?? "executed",
-                              step.conditionRule?.operator ?? "==",
-                              e.target.value
-                            )
+                            updateConditionRule(idx, step.conditionRule?.field ?? "executed", step.conditionRule?.operator ?? "==", e.target.value)
                           }
                           placeholder="value"
                           className="w-24 rounded border border-border/40 bg-background px-2 py-1 text-[10px] tracking-wider focus:outline-none"
@@ -507,7 +480,7 @@ export default function CreateWorkflowPage() {
                     </div>
                   )}
 
-                  {/* Remove step button */}
+                  {/* Remove step */}
                   {steps.length > 2 && (
                     <button
                       type="button"
@@ -547,5 +520,17 @@ export default function CreateWorkflowPage() {
         </form>
       </main>
     </HudShell>
+  );
+}
+
+// ── Page export ───────────────────────────────────────────────────────────────
+// Wrap the form in Suspense so Next.js can statically pre-render the shell.
+// useSearchParams() in CreateWorkflowForm requires this boundary (App Router).
+
+export default function CreateWorkflowPage() {
+  return (
+    <Suspense>
+      <CreateWorkflowForm />
+    </Suspense>
   );
 }
