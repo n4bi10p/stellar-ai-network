@@ -1,0 +1,104 @@
+name: Cron Jobs
+
+# Schedules mirror what was in vercel.json but now run from GitHub Actions
+# so they work on the Vercel Hobby (free) plan.
+#
+# All jobs hit the deployed app's API routes with a Bearer token.
+# Required GitHub secret: CRON_SECRET  (same value as in Vercel env vars)
+# Required GitHub secret: APP_URL      e.g. https://stellar-ai-network.vercel.app
+#
+# To add the secrets: GitHub repo → Settings → Secrets and variables → Actions
+
+on:
+  schedule:
+    # ── due-check   every 6 hours at :00 ─────────────────────────────────
+    - cron: "0 */6 * * *"
+    # ── notify-due  every 6 hours at :05 ─────────────────────────────────
+    - cron: "5 */6 * * *"
+    # ── auto-execute every 6 hours at :10 ────────────────────────────────
+    - cron: "10 */6 * * *"
+    # ── analytics-rollup once a day at 00:20 UTC ─────────────────────────
+    - cron: "20 0 * * *"
+
+  # Allow manual trigger from the Actions UI for debugging
+  workflow_dispatch:
+    inputs:
+      job:
+        description: "Which cron route to trigger"
+        required: true
+        default: "due-check"
+        type: choice
+        options:
+          - due-check
+          - notify-due
+          - auto-execute
+          - analytics-rollup
+
+jobs:
+  # ── Due-check (runs every 6 h at :00) ──────────────────────────────────────
+  due-check:
+    name: Cron — due-check
+    runs-on: ubuntu-latest
+    if: >
+      github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'due-check' ||
+      github.event_name == 'schedule' && startsWith(github.event.schedule, '0 */6')
+    steps:
+      - name: Call /api/cron/due-check
+        run: |
+          STATUS=$(curl -s -o /tmp/body.json -w "%{http_code}" \
+            -X GET "${{ secrets.APP_URL }}/api/cron/due-check" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}")
+          echo "HTTP status: $STATUS"
+          cat /tmp/body.json
+          if [ "$STATUS" != "200" ]; then exit 1; fi
+
+  # ── Notify-due (runs every 6 h at :05) ─────────────────────────────────────
+  notify-due:
+    name: Cron — notify-due
+    runs-on: ubuntu-latest
+    if: >
+      github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'notify-due' ||
+      github.event_name == 'schedule' && startsWith(github.event.schedule, '5 */6')
+    steps:
+      - name: Call /api/cron/notify-due
+        run: |
+          STATUS=$(curl -s -o /tmp/body.json -w "%{http_code}" \
+            -X GET "${{ secrets.APP_URL }}/api/cron/notify-due" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}")
+          echo "HTTP status: $STATUS"
+          cat /tmp/body.json
+          if [ "$STATUS" != "200" ]; then exit 1; fi
+
+  # ── Auto-execute (runs every 6 h at :10) ───────────────────────────────────
+  auto-execute:
+    name: Cron — auto-execute
+    runs-on: ubuntu-latest
+    if: >
+      github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'auto-execute' ||
+      github.event_name == 'schedule' && startsWith(github.event.schedule, '10 */6')
+    steps:
+      - name: Call /api/cron/auto-execute
+        run: |
+          STATUS=$(curl -s -o /tmp/body.json -w "%{http_code}" \
+            -X GET "${{ secrets.APP_URL }}/api/cron/auto-execute" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}")
+          echo "HTTP status: $STATUS"
+          cat /tmp/body.json
+          if [ "$STATUS" != "200" ]; then exit 1; fi
+
+  # ── Analytics rollup (once a day at 00:20 UTC) ─────────────────────────────
+  analytics-rollup:
+    name: Cron — analytics-rollup
+    runs-on: ubuntu-latest
+    if: >
+      github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'analytics-rollup' ||
+      github.event_name == 'schedule' && startsWith(github.event.schedule, '20 0')
+    steps:
+      - name: Call /api/cron/analytics-rollup
+        run: |
+          STATUS=$(curl -s -o /tmp/body.json -w "%{http_code}" \
+            -X GET "${{ secrets.APP_URL }}/api/cron/analytics-rollup" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}")
+          echo "HTTP status: $STATUS"
+          cat /tmp/body.json
+          if [ "$STATUS" != "200" ]; then exit 1; fi
