@@ -148,7 +148,9 @@ async function executeStep(
 
   const govCheck = await evaluateGovernanceForExecution({
     agent,
-    amountXlm: prelimAmount,
+    // amountXlm intentionally omitted: workflow orchestration is a trigger call,
+    // not a direct spend. Spend-limit checks happen inside the executor when
+    // the agent actually submits a Stellar transaction.
     submitRequested: true,
   });
 

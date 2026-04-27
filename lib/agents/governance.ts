@@ -3,7 +3,9 @@ import type { StoredAgent, AgentGovernance } from "@/lib/store/types";
 
 export interface GovernanceCheckOptions {
   agent: StoredAgent;
-  amountXlm: number;
+  /** XLM amount for the transaction. Omit when triggering from a workflow
+   *  orchestrator step — spend-limit checks are skipped in that case. */
+  amountXlm?: number;
   submitRequested: boolean;
   approvedByOwner?: boolean;
   now?: Date;
@@ -98,7 +100,12 @@ export async function evaluateGovernanceForExecution(
     };
   }
 
-  if (!Number.isFinite(options.amountXlm) || options.amountXlm <= 0) {
+  // Spend-limit checks only apply when a concrete XLM amount is known.
+  // Workflow orchestration trigger calls omit amountXlm — skip these gates.
+  const hasAmount = options.amountXlm != null && Number.isFinite(options.amountXlm) && options.amountXlm > 0;
+
+  if (options.amountXlm != null && !hasAmount) {
+    // Caller explicitly passed an amount but it is invalid
     return {
       allowed: false,
       submitAllowed: false,
@@ -108,9 +115,10 @@ export async function evaluateGovernanceForExecution(
   }
 
   if (
+    hasAmount &&
     governance.perExecutionLimitXlm != null &&
     governance.perExecutionLimitXlm > 0 &&
-    options.amountXlm > governance.perExecutionLimitXlm
+    options.amountXlm! > governance.perExecutionLimitXlm
   ) {
     return {
       allowed: false,
@@ -121,13 +129,13 @@ export async function evaluateGovernanceForExecution(
   }
 
   let todaySpentXlm = 0;
-  if (governance.dailySpendLimitXlm != null && governance.dailySpendLimitXlm > 0) {
+  if (hasAmount && governance.dailySpendLimitXlm != null && governance.dailySpendLimitXlm > 0) {
     todaySpentXlm = await getAgentTodaySpentXlm({
       agentId: options.agent.id,
       now: options.now,
     });
 
-    if (todaySpentXlm + options.amountXlm > governance.dailySpendLimitXlm) {
+    if (todaySpentXlm + options.amountXlm! > governance.dailySpendLimitXlm) {
       return {
         allowed: false,
         submitAllowed: false,
