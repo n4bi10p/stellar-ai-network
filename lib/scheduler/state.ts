@@ -37,12 +37,23 @@ function resolveBackend(): SchedulerBackend {
     return "local";
   }
 
+  // Auto-detect: prefer postgres (Supabase) when DATABASE_URL is set.
+  // This is the correct backend for Vercel/serverless deployments.
   if (postgresConfigured()) {
     return "postgres";
   }
 
   if (redisConfigured()) {
     return "redis";
+  }
+
+  // In production without DB or Redis configured, fail loudly rather than
+  // attempting filesystem writes that will throw on read-only serverless envs.
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "[Scheduler] No storage backend available. " +
+      "Set DATABASE_URL (Supabase) or UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN."
+    );
   }
 
   return "local";

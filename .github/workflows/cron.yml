@@ -29,12 +29,39 @@ on:
         default: "due-check"
         type: choice
         options:
+          - health
           - due-check
           - notify-due
           - auto-execute
           - analytics-rollup
 
+# ── Shared helper ────────────────────────────────────────────────────────────
+# Re-usable step that calls an endpoint and fails if it returns non-200.
+# Both status code AND response body are printed before any exit.
+# env must provide: APP_URL, CRON_SECRET, ENDPOINT (e.g. /api/cron/due-check)
+
 jobs:
+  # ── Health check (manual only, or run before each cron for diagnostics) ─────
+  health:
+    name: Cron — health check
+    runs-on: ubuntu-latest
+    if: >
+      github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'health'
+    steps:
+      - name: Check /api/cron/health
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          echo "==> GET $APP_URL/api/cron/health"
+          BODY=$(curl -s -w "\n__STATUS__%{http_code}" \
+            -X GET "$APP_URL/api/cron/health" \
+            -H "Authorization: Bearer $CRON_SECRET")
+          STATUS=$(echo "$BODY" | tail -1 | sed 's/__STATUS__//')
+          echo "$BODY" | head -n -1 | python3 -m json.tool 2>/dev/null || echo "$BODY" | head -n -1
+          echo "HTTP status: $STATUS"
+          if [ "$STATUS" != "200" ]; then exit 1; fi
+
   # ── Due-check (runs every 6 h at :00) ──────────────────────────────────────
   due-check:
     name: Cron — due-check
@@ -44,13 +71,21 @@ jobs:
       github.event_name == 'schedule' && startsWith(github.event.schedule, '0 */6')
     steps:
       - name: Call /api/cron/due-check
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
-          STATUS=$(curl -s -o /tmp/body.json -w "%{http_code}" \
-            -X GET "${{ secrets.APP_URL }}/api/cron/due-check" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}")
+          echo "==> GET $APP_URL/api/cron/due-check"
+          BODY=$(curl -s -w "\n__STATUS__%{http_code}" \
+            -X GET "$APP_URL/api/cron/due-check" \
+            -H "Authorization: Bearer $CRON_SECRET")
+          STATUS=$(echo "$BODY" | tail -1 | sed 's/__STATUS__//')
+          echo "$BODY" | head -n -1 | python3 -m json.tool 2>/dev/null || echo "$BODY" | head -n -1
           echo "HTTP status: $STATUS"
-          cat /tmp/body.json
-          if [ "$STATUS" != "200" ]; then exit 1; fi
+          if [ "$STATUS" != "200" ]; then
+            echo "ERROR: Cron due-check returned $STATUS. Check body above for details."
+            exit 1
+          fi
 
   # ── Notify-due (runs every 6 h at :05) ─────────────────────────────────────
   notify-due:
@@ -61,13 +96,21 @@ jobs:
       github.event_name == 'schedule' && startsWith(github.event.schedule, '5 */6')
     steps:
       - name: Call /api/cron/notify-due
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
-          STATUS=$(curl -s -o /tmp/body.json -w "%{http_code}" \
-            -X GET "${{ secrets.APP_URL }}/api/cron/notify-due" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}")
+          echo "==> GET $APP_URL/api/cron/notify-due"
+          BODY=$(curl -s -w "\n__STATUS__%{http_code}" \
+            -X GET "$APP_URL/api/cron/notify-due" \
+            -H "Authorization: Bearer $CRON_SECRET")
+          STATUS=$(echo "$BODY" | tail -1 | sed 's/__STATUS__//')
+          echo "$BODY" | head -n -1 | python3 -m json.tool 2>/dev/null || echo "$BODY" | head -n -1
           echo "HTTP status: $STATUS"
-          cat /tmp/body.json
-          if [ "$STATUS" != "200" ]; then exit 1; fi
+          if [ "$STATUS" != "200" ]; then
+            echo "ERROR: Cron notify-due returned $STATUS. Check body above for details."
+            exit 1
+          fi
 
   # ── Auto-execute (runs every 6 h at :10) ───────────────────────────────────
   auto-execute:
@@ -78,13 +121,21 @@ jobs:
       github.event_name == 'schedule' && startsWith(github.event.schedule, '10 */6')
     steps:
       - name: Call /api/cron/auto-execute
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
-          STATUS=$(curl -s -o /tmp/body.json -w "%{http_code}" \
-            -X GET "${{ secrets.APP_URL }}/api/cron/auto-execute" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}")
+          echo "==> GET $APP_URL/api/cron/auto-execute"
+          BODY=$(curl -s -w "\n__STATUS__%{http_code}" \
+            -X GET "$APP_URL/api/cron/auto-execute" \
+            -H "Authorization: Bearer $CRON_SECRET")
+          STATUS=$(echo "$BODY" | tail -1 | sed 's/__STATUS__//')
+          echo "$BODY" | head -n -1 | python3 -m json.tool 2>/dev/null || echo "$BODY" | head -n -1
           echo "HTTP status: $STATUS"
-          cat /tmp/body.json
-          if [ "$STATUS" != "200" ]; then exit 1; fi
+          if [ "$STATUS" != "200" ]; then
+            echo "ERROR: Cron auto-execute returned $STATUS. Check body above for details."
+            exit 1
+          fi
 
   # ── Analytics rollup (once a day at 00:20 UTC) ─────────────────────────────
   analytics-rollup:
@@ -95,10 +146,18 @@ jobs:
       github.event_name == 'schedule' && startsWith(github.event.schedule, '20 0')
     steps:
       - name: Call /api/cron/analytics-rollup
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
-          STATUS=$(curl -s -o /tmp/body.json -w "%{http_code}" \
-            -X GET "${{ secrets.APP_URL }}/api/cron/analytics-rollup" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}")
+          echo "==> GET $APP_URL/api/cron/analytics-rollup"
+          BODY=$(curl -s -w "\n__STATUS__%{http_code}" \
+            -X GET "$APP_URL/api/cron/analytics-rollup" \
+            -H "Authorization: Bearer $CRON_SECRET")
+          STATUS=$(echo "$BODY" | tail -1 | sed 's/__STATUS__//')
+          echo "$BODY" | head -n -1 | python3 -m json.tool 2>/dev/null || echo "$BODY" | head -n -1
           echo "HTTP status: $STATUS"
-          cat /tmp/body.json
-          if [ "$STATUS" != "200" ]; then exit 1; fi
+          if [ "$STATUS" != "200" ]; then
+            echo "ERROR: Cron analytics-rollup returned $STATUS. Check body above for details."
+            exit 1
+          fi
