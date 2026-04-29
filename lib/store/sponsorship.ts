@@ -4,6 +4,7 @@
  */
 
 import { getPrismaClient } from "@/lib/db/client";
+import type { Prisma } from "@prisma/client";
 import type { SponsorshipConfig } from "@/lib/stellar/fee-sponsorship";
 import { encryptSecret, decryptSecret } from "@/lib/security/crypto";
 
@@ -173,7 +174,7 @@ export async function recordSponsoredTransaction(params: {
   baseFee: number; // in stroops
   originalXdr?: string;
   feeBumpXdr?: string;
-  metadata?: Record<string, unknown>;
+  metadata?: Prisma.InputJsonValue;
 }) {
   const feePaidXlm = params.feePaid / 10_000_000;
   const baseFeeXlm = params.baseFee / 10_000_000;

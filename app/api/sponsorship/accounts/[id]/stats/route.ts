@@ -10,9 +10,9 @@ const db = getPrismaClient();
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const sponsorId = params.id;
+  const { id: sponsorId } = await params;
 
   try {
     // Verify sponsor exists

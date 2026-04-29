@@ -303,12 +303,13 @@ export async function executeAgentOnce(options: {
 
       if (sponsorAccount && result.hash) {
         try {
+          const baseFeeStroops = Number(StellarSdk.BASE_FEE);
           await recordSponsoredTransaction({
             txHash: result.hash,
             agentId,
             sponsorId: sponsorAccount.id,
-            feePaid: result.feeSpent || StellarSdk.BASE_FEE * 2, // Fallback to estimate
-            baseFee: StellarSdk.BASE_FEE,
+            feePaid: result.feeSpent ?? baseFeeStroops * 2, // Fallback to estimate
+            baseFee: baseFeeStroops,
             originalXdr: xdr,
             feeBumpXdr: xdr, // Both are same if fee-bump was applied
             metadata: {

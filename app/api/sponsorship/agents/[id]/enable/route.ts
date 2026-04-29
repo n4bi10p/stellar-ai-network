@@ -5,15 +5,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   enableAgentSponsorship,
-  getAgentSponsorshipConfig,
 } from "@/lib/store/sponsorship";
 import { getAgentById } from "@/lib/store/agents";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const agentId = params.id;
+  const { id: agentId } = await params;
 
   try {
     const { sponsorId, maxPerTransaction } = await request.json();

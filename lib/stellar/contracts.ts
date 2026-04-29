@@ -15,6 +15,31 @@ function getRpc(): StellarSdk.rpc.Server {
   return _rpc;
 }
 
+function getFeeSpentStroops(
+  result: StellarSdk.rpc.Api.GetTransactionResponse
+): number | undefined {
+  if (!("feeBump" in result)) {
+    return undefined;
+  }
+
+  const feeBump = result.feeBump;
+  if (!feeBump || typeof feeBump !== "object" || !("feeSpent" in feeBump)) {
+    return undefined;
+  }
+
+  const feeSpent = (feeBump as Record<string, unknown>).feeSpent;
+  if (typeof feeSpent === "number") {
+    return feeSpent;
+  }
+
+  if (typeof feeSpent === "string") {
+    const parsed = Number(feeSpent);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+
+  return undefined;
+}
+
 // ── Helper: convert JS value → ScVal ──
 function toScVal(
   value: unknown,
@@ -111,6 +136,7 @@ export async function submitSorobanTx(signedXDR: string): Promise<{
   ledger: number;
   status: "SUCCESS" | "FAILED" | "PENDING";
   resultXdr?: string;
+  feeSpent?: number;
 }> {
   const rpc = getRpc();
   const tx = StellarSdk.TransactionBuilder.fromXDR(
@@ -140,19 +166,23 @@ export async function submitSorobanTx(signedXDR: string): Promise<{
   );
 
   if (getResult.status === StellarSdk.rpc.Api.GetTransactionStatus.SUCCESS) {
+    const feeSpent = getFeeSpentStroops(getResult);
     return {
       hash,
       ledger: getResult.ledger,
       status: "SUCCESS",
       resultXdr: getResult.resultXdr?.toXDR("base64"),
+      feeSpent,
     };
   }
 
   if (getResult.status === StellarSdk.rpc.Api.GetTransactionStatus.FAILED) {
+    const feeSpent = getFeeSpentStroops(getResult);
     return {
       hash,
       ledger: getResult.ledger,
       status: "FAILED",
+      feeSpent,
     };
   }
 
@@ -187,13 +217,15 @@ export function buildExecute(
   contractId: string,
   recipient: string,
   amount: number,
-  sourceAddress: string
+  sourceAddress: string,
+  sponsorshipConfig?: SponsorshipConfig & { sponsorSecretKey: string }
 ) {
   return buildContractCall(
     contractId,
     "execute",
     [toScVal(recipient, "address"), toScVal(amount, "i128")],
-    sourceAddress
+    sourceAddress,
+    sponsorshipConfig
   );
 }
 

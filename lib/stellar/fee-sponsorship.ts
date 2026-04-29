@@ -32,6 +32,55 @@ export interface FeeBumpResult {
   baseFee: number; // in stroops per operation
 }
 
+interface AccountBalance {
+  asset_type: string;
+  balance: string;
+}
+
+function getAccountBalances(account: unknown): AccountBalance[] {
+  if (!account || typeof account !== "object" || !("balances" in account)) {
+    return [];
+  }
+
+  const balances = (account as { balances?: unknown }).balances;
+  if (!Array.isArray(balances)) {
+    return [];
+  }
+
+  return balances.filter(
+    (balance): balance is AccountBalance =>
+      !!balance &&
+      typeof balance === "object" &&
+      (balance as { asset_type?: unknown }).asset_type === "native" &&
+      typeof (balance as { balance?: unknown }).balance === "string"
+  );
+}
+
+function getFeeSpentStroops(
+  result: StellarSdk.rpc.Api.GetTransactionResponse
+): number | undefined {
+  if (!("feeBump" in result)) {
+    return undefined;
+  }
+
+  const feeBump = result.feeBump;
+  if (!feeBump || typeof feeBump !== "object" || !("feeSpent" in feeBump)) {
+    return undefined;
+  }
+
+  const feeSpent = (feeBump as Record<string, unknown>).feeSpent;
+  if (typeof feeSpent === "number") {
+    return feeSpent;
+  }
+
+  if (typeof feeSpent === "string") {
+    const parsed = Number(feeSpent);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+
+  return undefined;
+}
+
 /**
  * Validate sponsor account has sufficient balance for fee coverage
  */
@@ -44,7 +93,9 @@ export async function validateSponsorBalance(
     const account = await rpc.getAccount(sponsorAddress);
 
     // Find native XLM balance
-    const nativeBalance = account.balances.find((b) => b.asset_type === "native");
+    const nativeBalance = getAccountBalances(account).find(
+      (b) => b.asset_type === "native"
+    );
     if (!nativeBalance) {
       return {
         valid: false,
@@ -87,13 +138,17 @@ export async function createFeeBumpTransaction(
   originalXdr: string,
   sponsorAddress: string,
   sponsorSecretKey: string,
-  baseFeePerOp: number = StellarSdk.BASE_FEE
+  baseFeePerOp: number = Number(StellarSdk.BASE_FEE)
 ): Promise<FeeBumpResult> {
   // Deserialize original transaction
   const originalTx = StellarSdk.TransactionBuilder.fromXDR(
     originalXdr,
     NETWORK_PASSPHRASE
   );
+
+  if (originalTx instanceof StellarSdk.FeeBumpTransaction) {
+    throw new Error("Cannot create fee-bump transaction from fee-bump XDR");
+  }
 
   // Calculate fee for fee-bump (inner + sponsor operation overhead)
   const operationCount = originalTx.operations.length;
@@ -102,7 +157,7 @@ export async function createFeeBumpTransaction(
   // Create fee-bump transaction using SDK helper
   const feeBumpTx = StellarSdk.TransactionBuilder.buildFeeBumpTransaction(
     sponsorAddress,
-    baseFeePerOp,
+    String(baseFeePerOp),
     originalTx,
     NETWORK_PASSPHRASE
   );
@@ -142,7 +197,7 @@ export async function submitFeeBumpTransaction(
     const sendResult = await rpc.sendTransaction(tx);
 
     if (sendResult.status === "ERROR") {
-      throw new Error(`Transaction send failed: ${sendResult.errorResultXdr}`);
+      throw new Error(`Transaction send failed: ${sendResult.errorResult}`);
     }
 
     // Poll for confirmation
@@ -166,7 +221,7 @@ export async function submitFeeBumpTransaction(
       getResult.status === StellarSdk.rpc.Api.GetTransactionStatus.SUCCESS ||
       getResult.status === StellarSdk.rpc.Api.GetTransactionStatus.FAILED
     ) {
-      sponsorFeeSpent = getResult.feeBump?.feeSpent || 0;
+      sponsorFeeSpent = getFeeSpentStroops(getResult) ?? 0;
     }
 
     const status =
@@ -178,7 +233,7 @@ export async function submitFeeBumpTransaction(
 
     return {
       hash,
-      ledger: getResult.ledger || 0,
+      ledger: "ledger" in getResult ? getResult.ledger : 0,
       status,
       sponsorFeeSpent,
     };
@@ -238,7 +293,7 @@ export async function buildSponsoredTransaction(
     // Validate sponsor has balance
     const balanceCheck = await validateSponsorBalance(
       sponsorConfig.sponsorAddress,
-      StellarSdk.BASE_FEE * 2, // Estimate for fee-bump overhead
+      Number(StellarSdk.BASE_FEE) * 2, // Estimate for fee-bump overhead
       rpc
     );
 
