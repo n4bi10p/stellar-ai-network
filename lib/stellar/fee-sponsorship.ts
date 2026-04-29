@@ -99,26 +99,21 @@ export async function createFeeBumpTransaction(
   const operationCount = originalTx.operations.length;
   const feeBumpFeeStroops = baseFeePerOp * (operationCount + 1); // +1 for fee-bump overhead
 
-  // Create fee-bump transaction
-  const feeBumpTx = new StellarSdk.FeeBumpTransaction({
-    innerTransaction: originalTx,
-    baseFee: baseFeePerOp,
-    fee: feeBumpFeeStroops,
-    feeAccount: sponsorAddress,
-  });
+  // Create fee-bump transaction using SDK helper
+  const feeBumpTx = StellarSdk.TransactionBuilder.buildFeeBumpTransaction(
+    sponsorAddress,
+    baseFeePerOp,
+    originalTx,
+    NETWORK_PASSPHRASE
+  );
 
   // Sign with sponsor key
   const sponsorKeyPair = StellarSdk.Keypair.fromSecret(sponsorSecretKey);
-  const feeBumpTxEnvelope = new StellarSdk.FeeBumpTransactionEnvelope({
-    tx: feeBumpTx,
-  });
-
-  // Add sponsor signature
-  feeBumpTxEnvelope.sign(sponsorKeyPair);
+  feeBumpTx.sign(sponsorKeyPair);
 
   return {
     originalXdr,
-    feeBumpXdr: feeBumpTxEnvelope.toXDR(),
+    feeBumpXdr: feeBumpTx.toXDR(),
     sponsorAddress,
     fee: feeBumpFeeStroops,
     baseFee: baseFeePerOp,
@@ -294,8 +289,8 @@ export function extractFeeBumpInfo(feeBumpXdr: string): {
 
     if (tx instanceof StellarSdk.FeeBumpTransaction) {
       return {
-        sponsorAddress: tx.feeAccount,
-        fee: tx.fee,
+        sponsorAddress: tx.feeSource,
+        fee: Number(tx.fee),
       };
     }
 

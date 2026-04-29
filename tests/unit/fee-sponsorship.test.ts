@@ -1,9 +1,10 @@
+// @vitest-environment node
 /**
  * Tests for Fee Sponsorship Feature
  * Validates gasless transaction functionality
  */
 
-import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import * as StellarSdk from "@stellar/stellar-sdk";
 import {
   createFeeBumpTransaction,
@@ -15,18 +16,23 @@ import {
 import { NETWORK_PASSPHRASE } from "@/lib/utils/constants";
 
 describe("Fee Sponsorship Feature", () => {
-  // Generate test keypairs
-  const userKeypair = StellarSdk.Keypair.random();
-  const sponsorKeypair = StellarSdk.Keypair.random();
+  // Fixed test addresses for stable test behavior
+  const testDestinationAddress = "GDCR7AHCIURFPTTSPOXBQQC3INWL7OA64KSEOBHPSG24BEEZZFFCLTUB";
+  const userSecret = "SCXSNREIX2LNDTGTVE4ARG673DBFH6ZXMYLUEWL4ATYQ7AQAJWDKVEVB";
+  const sponsorSecret = "SDYMVZIB7SOS4KZEJJZICWSKMITV6WJTEQYWT7MA74EVERVCTM73VZHO";
+  const userKeypair = StellarSdk.Keypair.fromSecret(userSecret);
+  const sponsorKeypair = StellarSdk.Keypair.fromSecret(sponsorSecret);
+  const sponsorPublicKey = sponsorKeypair.publicKey();
 
   const mockSponsorshipConfig = {
     enabled: true,
-    sponsorAddress: sponsorKeypair.publicKey(),
+    sponsorAddress: sponsorPublicKey,
     maxSpendPerTransaction: 10,
     maxMonthlySpend: 1000,
     monthlySpendUsed: 100,
     lastResetAt: new Date(),
   };
+
 
   describe("Fee Bump Transaction Creation", () => {
     it("should create a fee-bump transaction from regular transaction XDR", async () => {
@@ -38,7 +44,7 @@ describe("Fee Sponsorship Feature", () => {
       })
         .addOperation(
           StellarSdk.Operation.payment({
-            destination: StellarSdk.Keypair.random().publicKey(),
+            destination: testDestinationAddress,
             asset: StellarSdk.Asset.native(),
             amount: "100",
           })
@@ -52,7 +58,7 @@ describe("Fee Sponsorship Feature", () => {
       const feeBumpResult = await createFeeBumpTransaction(
         originalXdr,
         sponsorKeypair.publicKey(),
-        sponsorKeypair.secret()
+        sponsorSecret
       );
 
       // Verify
@@ -70,14 +76,14 @@ describe("Fee Sponsorship Feature", () => {
       })
         .addOperation(
           StellarSdk.Operation.payment({
-            destination: StellarSdk.Keypair.random().publicKey(),
+            destination: testDestinationAddress,
             asset: StellarSdk.Asset.native(),
             amount: "100",
           })
         )
         .addOperation(
           StellarSdk.Operation.payment({
-            destination: StellarSdk.Keypair.random().publicKey(),
+            destination: testDestinationAddress,
             asset: StellarSdk.Asset.native(),
             amount: "50",
           })
@@ -91,7 +97,7 @@ describe("Fee Sponsorship Feature", () => {
       const feeBumpResult = await createFeeBumpTransaction(
         originalXdr,
         sponsorKeypair.publicKey(),
-        sponsorKeypair.secret(),
+        sponsorSecret,
         baseFee
       );
 
@@ -163,7 +169,7 @@ describe("Fee Sponsorship Feature", () => {
       };
 
       const result = await validateSponsorBalance(
-        sponsorKeypair.publicKey(),
+        sponsorPublicKey,
         StellarSdk.BASE_FEE * 10,
         mockRpc as any
       );
@@ -220,7 +226,7 @@ describe("Fee Sponsorship Feature", () => {
       })
         .addOperation(
           StellarSdk.Operation.payment({
-            destination: StellarSdk.Keypair.random().publicKey(),
+            destination: testDestinationAddress,
             asset: StellarSdk.Asset.native(),
             amount: "100",
           })
@@ -234,7 +240,7 @@ describe("Fee Sponsorship Feature", () => {
       const feeBumpResult = await createFeeBumpTransaction(
         originalXdr,
         sponsorKeypair.publicKey(),
-        sponsorKeypair.secret()
+        sponsorSecret
       );
 
       // Check regular transaction
@@ -252,7 +258,7 @@ describe("Fee Sponsorship Feature", () => {
       })
         .addOperation(
           StellarSdk.Operation.payment({
-            destination: StellarSdk.Keypair.random().publicKey(),
+            destination: testDestinationAddress,
             asset: StellarSdk.Asset.native(),
             amount: "100",
           })
@@ -266,7 +272,7 @@ describe("Fee Sponsorship Feature", () => {
       const feeBumpResult = await createFeeBumpTransaction(
         originalXdr,
         sponsorKeypair.publicKey(),
-        sponsorKeypair.secret()
+        sponsorSecret
       );
 
       // Extract info
@@ -285,7 +291,7 @@ describe("Fee Sponsorship Feature", () => {
       })
         .addOperation(
           StellarSdk.Operation.payment({
-            destination: StellarSdk.Keypair.random().publicKey(),
+            destination: testDestinationAddress,
             asset: StellarSdk.Asset.native(),
             amount: "100",
           })
@@ -310,7 +316,7 @@ describe("Fee Sponsorship Feature", () => {
       })
         .addOperation(
           StellarSdk.Operation.payment({
-            destination: StellarSdk.Keypair.random().publicKey(),
+            destination: testDestinationAddress,
             asset: StellarSdk.Asset.native(),
             amount: "100",
           })
@@ -319,13 +325,13 @@ describe("Fee Sponsorship Feature", () => {
         .build();
 
       const originalXdr = originalTx.toXDR();
-      const originalFee = originalTx.fee;
+      const originalFee = Number(originalTx.fee);
 
       // Create fee-bump
       const feeBumpResult = await createFeeBumpTransaction(
         originalXdr,
-        sponsorKeypair.publicKey(),
-        sponsorKeypair.secret()
+        sponsorPublicKey,
+        sponsorSecret
       );
 
       // Fee-bump fee should be more than original
