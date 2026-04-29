@@ -251,3 +251,73 @@ model AgentWorkflowRun {
   @@index([workflowId, startedAt])
   @@index([status, startedAt])
 }
+
+// ── Level 6 Advanced: Fee Sponsorship (Gasless Transactions) ──
+model SponsorAccount {
+  id                String   @id @default(cuid())
+  address           String   @unique
+  name              String
+  secretKeyEncrypted Json     // AES-256-GCM encrypted secret key blob (see lib/security/crypto.ts)
+  
+  totalSpent        Float    @default(0)    // Total XLM spent on sponsorship (cumulative)
+  monthlyBudget     Float    @default(100)  // Max XLM per calendar month
+  monthlySpent      Float    @default(0)    // XLM spent in current month
+  monthResetAt      DateTime @default(now())
+  
+  active            Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  agentSponsorships AgentSponsorship[]
+  sponsoredTxs      SponsoredTransaction[]
+
+  @@index([active, createdAt])
+}
+
+// Configuration for fee sponsorship per agent
+model AgentSponsorship {
+  id                String   @id @default(cuid())
+  agentId           String   @unique
+  sponsorId         String
+  
+  enabled           Boolean  @default(true)
+  maxPerTransaction Float    @default(10)   // Max XLM per sponsored transaction
+  
+  transactionCount  Int      @default(0)    // Total sponsored transactions
+  totalSponsored    Float    @default(0)    // Total XLM sponsored (cumulative)
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  sponsor           SponsorAccount @relation(fields: [sponsorId], references: [id], onDelete: Cascade)
+
+  @@index([agentId, createdAt])
+  @@index([sponsorId, createdAt])
+}
+
+// Audit trail for all sponsored transactions
+model SponsoredTransaction {
+  id                String   @id @default(cuid())
+  txHash            String   @unique
+  agentId           String
+  sponsorId         String
+  
+  status            String   // pending | success | failed | reverted
+  feePaid           Float    // Actual fees paid in XLM (stroops converted)
+  baseFee           Float    // Base fee per operation
+  
+  originalXdr       String?  // Original transaction XDR (before fee-bump)
+  feeBumpXdr        String?  // Fee-bump transaction XDR
+  
+  metadata          Json?    // Additional tracking data
+  
+  createdAt         DateTime @default(now())
+  confirmedAt       DateTime?
+  
+  sponsor           SponsorAccount @relation(fields: [sponsorId], references: [id], onDelete: Cascade)
+
+  @@index([sponsorId, createdAt])
+  @@index([agentId, createdAt])
+  @@index([status, createdAt])
+  @@index([txHash])
+}

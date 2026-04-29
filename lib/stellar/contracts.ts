@@ -3,6 +3,7 @@
 
 import * as StellarSdk from "@stellar/stellar-sdk";
 import { SOROBAN_RPC_URL, NETWORK_PASSPHRASE } from "@/lib/utils/constants";
+import type { SponsorshipConfig } from "@/lib/stellar/fee-sponsorship";
 
 // ── Soroban RPC singleton ──
 let _rpc: StellarSdk.rpc.Server | null = null;
@@ -35,13 +36,15 @@ function toScVal(
 
 /**
  * Build a Soroban contract invocation transaction (unsigned XDR).
+ * Optionally applies fee-bump sponsorship for gasless execution.
  * The caller is expected to sign it with their wallet and submit via `submitSorobanTx`.
  */
 export async function buildContractCall(
   contractId: string,
   method: string,
   args: StellarSdk.xdr.ScVal[],
-  sourceAddress: string
+  sourceAddress: string,
+  sponsorshipConfig?: SponsorshipConfig & { sponsorSecretKey: string }
 ): Promise<string> {
   const rpc = getRpc();
   const contract = new StellarSdk.Contract(contractId);
@@ -72,6 +75,29 @@ export async function buildContractCall(
     tx,
     simulated
   ).build();
+
+  // Apply fee-bump sponsorship if configured
+  if (sponsorshipConfig?.enabled && sponsorshipConfig?.sponsorSecretKey) {
+    try {
+      const { buildSponsoredTransaction } = await import(
+        "@/lib/stellar/fee-sponsorship"
+      );
+
+      const sponsoredResult = await buildSponsoredTransaction(
+        async () => assembled.toXDR(),
+        sponsorshipConfig,
+        sponsorshipConfig.sponsorSecretKey,
+        rpc
+      );
+
+      return sponsoredResult.xdr;
+    } catch (error) {
+      console.warn(
+        `Fee sponsorship failed, falling back to regular transaction: ${error instanceof Error ? error.message : String(error)}`
+      );
+      return assembled.toXDR();
+    }
+  }
 
   return assembled.toXDR();
 }

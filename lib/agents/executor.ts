@@ -1,4 +1,5 @@
 import { buildExecute, submitSorobanTx } from "@/lib/stellar/contracts";
+import * as StellarSdk from "@stellar/stellar-sdk";
 import {
   getAgentById,
   getAgentsByOwner,
@@ -18,6 +19,15 @@ import {
 import { retryWithBackoff } from "@/lib/scheduler/retry";
 import { evaluateGovernanceForExecution } from "@/lib/agents/governance";
 import { writeAuditLog } from "@/lib/agents/audit-log";
+import {
+  getAgentSponsorshipConfig,
+  getSponsorAccountWithSecret,
+  recordSponsoredTransaction,
+  updateSponsoredTransactionStatus,
+} from "@/lib/store/sponsorship";
+import { getPrismaClient } from "@/lib/db/client";
+
+const db = getPrismaClient();
 
 export interface AgentExecutionResult {
   agentId: string;
@@ -204,12 +214,37 @@ export async function executeAgentOnce(options: {
     };
   }
 
+  // ── Fee Sponsorship Check ─────────────────────────────────────────────────
+  let sponsorshipConfig: any = undefined;
+  const agentSponsorshipConfig = await getAgentSponsorshipConfig(agentId);
+  if (agentSponsorshipConfig?.enabled) {
+    // Get sponsor account with decrypted secret key (server-side only)
+    const sponsorAccount = await db.sponsorAccount.findFirst({
+      where: { address: agentSponsorshipConfig.sponsorAddress },
+    });
+
+    if (sponsorAccount) {
+      const decryptedSponsor = await getSponsorAccountWithSecret(
+        sponsorAccount.id
+      );
+      if (decryptedSponsor) {
+        sponsorshipConfig = {
+          ...agentSponsorshipConfig,
+          sponsorSecretKey: decryptedSponsor.secretKey,
+        };
+      }
+    }
+  }
+  // ────────────────────────────────────────────────────────────────────────
+
   // Build XDR using Soroban execute(recipient, amount) helper
+  // Optionally applies fee-bump sponsorship
   const xdr = await buildExecute(
     agent.contractId,
     decision.recipient,
     amountStroops,
-    sourceAddress
+    sourceAddress,
+    sponsorshipConfig
   );
 
   const workflowSuccessStatePatch =
@@ -260,6 +295,45 @@ export async function executeAgentOnce(options: {
     const result = await retryWithBackoff(() => submitSorobanTx(signedXdr));
     const success = result.status === "SUCCESS" || result.status === "PENDING";
 
+    // ── Record Sponsored Transaction ──────────────────────────────────────
+    if (sponsorshipConfig && agentSponsorshipConfig?.sponsorAddress) {
+      const sponsorAccount = await db.sponsorAccount.findFirst({
+        where: { address: agentSponsorshipConfig.sponsorAddress },
+      });
+
+      if (sponsorAccount && result.hash) {
+        try {
+          await recordSponsoredTransaction({
+            txHash: result.hash,
+            agentId,
+            sponsorId: sponsorAccount.id,
+            feePaid: result.feeSpent || StellarSdk.BASE_FEE * 2, // Fallback to estimate
+            baseFee: StellarSdk.BASE_FEE,
+            originalXdr: xdr,
+            feeBumpXdr: xdr, // Both are same if fee-bump was applied
+            metadata: {
+              status: result.status,
+              executionMode: resolveExecutionMode(agent),
+            },
+          });
+
+          // Update status after confirmation
+          if (success) {
+            await updateSponsoredTransactionStatus(result.hash, "success");
+          } else if (result.status === "FAILED") {
+            await updateSponsoredTransactionStatus(result.hash, "failed");
+          }
+        } catch (sponsorError) {
+          console.warn(
+            "Failed to record sponsored transaction:",
+            sponsorError
+          );
+          // Don't fail the overall execution if sponsorship recording fails
+        }
+      }
+    }
+    // ────────────────────────────────────────────────────────────────────────
+
     await addExecutionLog({
       agentId,
       triggerSource,
@@ -269,6 +343,7 @@ export async function executeAgentOnce(options: {
       failureReason: success ? null : "Execution failed on-chain",
       metadata: {
         ...logMetadata,
+        sponsored: !!sponsorshipConfig,
         workflow:
           workflowConfig && workflowSuccessStatePatch && Number.isFinite(observedBalanceXlm)
             ? buildWorkflowChainLogMetadata({
