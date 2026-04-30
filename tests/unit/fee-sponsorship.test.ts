@@ -92,7 +92,7 @@ describe("Fee Sponsorship Feature", () => {
         .build();
 
       const originalXdr = tx.toXDR();
-      const baseFee = StellarSdk.BASE_FEE;
+      const baseFee = Number(StellarSdk.BASE_FEE);
 
       const feeBumpResult = await createFeeBumpTransaction(
         originalXdr,
@@ -101,8 +101,8 @@ describe("Fee Sponsorship Feature", () => {
         baseFee
       );
 
-      // Fee should be: baseFee * (operationCount + 1 for fee-bump overhead)
-      const expectedFee = baseFee * (2 + 1); // 2 operations + fee-bump overhead
+      // Fee should be: Number(baseFee) * (operationCount + 1 for fee-bump overhead)
+      const expectedFee = Number(baseFee) * (2 + 1); // 2 operations + fee-bump overhead
       expect(feeBumpResult.fee).toBe(expectedFee);
     });
   });
@@ -123,7 +123,7 @@ describe("Fee Sponsorship Feature", () => {
 
       const result = await validateSponsorBalance(
         sponsorKeypair.publicKey(),
-        StellarSdk.BASE_FEE * 10,
+        Number(StellarSdk.BASE_FEE) * 10,
         mockRpc as any
       );
 
@@ -146,7 +146,7 @@ describe("Fee Sponsorship Feature", () => {
 
       const result = await validateSponsorBalance(
         sponsorKeypair.publicKey(),
-        StellarSdk.BASE_FEE * 10,
+        Number(StellarSdk.BASE_FEE) * 10,
         mockRpc as any
       );
 
@@ -170,7 +170,7 @@ describe("Fee Sponsorship Feature", () => {
 
       const result = await validateSponsorBalance(
         sponsorPublicKey,
-        StellarSdk.BASE_FEE * 10,
+        Number(StellarSdk.BASE_FEE) * 10,
         mockRpc as any
       );
 

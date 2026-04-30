@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none">
+  <rect width="128" height="128" rx="24" fill="#1C1B1F"/>
+  <!-- Geometric rabbit/fox head -->
+  <path d="M64 88 L36 50 L48 30 L64 60 L80 30 L92 50 Z" fill="#FF8A00"/>
+  <path d="M64 88 L48 56 L64 60 L80 56 Z" fill="#FFB04D"/>
+  <circle cx="56" cy="64" r="3" fill="#1C1B1F"/>
+  <circle cx="72" cy="64" r="3" fill="#1C1B1F"/>
+</svg>

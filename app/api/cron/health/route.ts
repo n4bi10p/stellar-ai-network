@@ -3,7 +3,10 @@ import { getSchedulerBackendKind } from "@/lib/scheduler/state";
 
 function isAuthorized(request: Request): boolean {
   const secret = process.env.CRON_SECRET;
-  if (!secret) return true;
+  if (!secret) {
+    if (process.env.NODE_ENV === "production") return false;
+    return true;
+  }
   const authHeader = request.headers.get("authorization");
   return authHeader === `Bearer ${secret}`;
 }

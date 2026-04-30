@@ -183,7 +183,7 @@ async function executeStep(
 
     // executed: false without error means strategy chose not to fire — treat as failed for
     // downstream condition evaluation (so on_failure steps can react)
-    const stepStatus: StepRunStatus = result.executed ? "success" : "failed";
+    const stepStatus: StepRunStatus = result.executed ? "success" : (result.error ? "failed" : "skipped");
 
     return {
       ...baseResult,

@@ -5,8 +5,31 @@ import { persist } from "zustand/middleware";
 import { fetchBalance as fetchXLMBalance } from "@/lib/stellar/client";
 import { NETWORK_PASSPHRASE } from "@/lib/utils/constants";
 import type { WalletState } from "@/lib/stellar/types";
-import type { WalletId, WalletProvider } from "@/lib/wallets/types";
-import { getProvider, WALLET_PROVIDERS } from "@/lib/wallets";
+
+let kitInstance: any = null;
+
+async function getKit() {
+  if (typeof window === "undefined") return null;
+  if (!kitInstance) {
+    // Dynamically import to prevent Next.js SSR crashes
+    // because the kit uses localStorage at the root module level
+    const { StellarWalletsKit } = await import("@creit.tech/stellar-wallets-kit/sdk");
+    const { defaultModules } = await import("@creit.tech/stellar-wallets-kit/modules/utils");
+    const { Networks } = await import("@creit.tech/stellar-wallets-kit/types");
+
+    StellarWalletsKit.init({
+      modules: defaultModules(),
+    });
+    // Try to map our passphrase to their Networks enum
+    if (NETWORK_PASSPHRASE.includes("Test")) {
+      StellarWalletsKit.setNetwork(Networks.TESTNET);
+    } else {
+      StellarWalletsKit.setNetwork(Networks.PUBLIC);
+    }
+    kitInstance = StellarWalletsKit;
+  }
+  return kitInstance;
+}
 
 function getWalletErrorMessage(err: unknown): string {
   if (err instanceof Error && err.message) return err.message;
@@ -36,19 +59,13 @@ function getWalletErrorMessage(err: unknown): string {
 }
 
 interface WalletStore extends WalletState {
-  /** Currently active wallet provider id */
-  activeWallet: WalletId | null;
-  /** The live provider instance (not serialisable, excluded from devtools) */
-  _provider: WalletProvider | null;
-
-  /** Connect using a specific wallet provider */
-  connect: (walletId?: WalletId) => Promise<void>;
-  disconnect: () => void;
+  activeWallet: string | null;
+  connect: (walletId?: string) => Promise<void>;
+  disconnect: () => Promise<void>;
   refreshBalance: () => Promise<void>;
   signTx: (xdr: string) => Promise<string>;
-
-  /** Check which wallets are currently available in the browser */
-  detectWallets: () => Promise<WalletId[]>;
+  detectWallets: () => Promise<any[]>;
+  openAuthModal: () => Promise<void>;
 }
 
 export const useWallet = create<WalletStore>()(
@@ -60,139 +77,159 @@ export const useWallet = create<WalletStore>()(
       loading: false,
       error: "",
       activeWallet: null,
-      _provider: null,
 
       detectWallets: async () => {
-    const available: WalletId[] = [];
-    for (const p of WALLET_PROVIDERS) {
-      try {
-        if (await p.isAvailable()) available.push(p.meta.id);
-      } catch {
-        // skip unavailable
-      }
-    }
-    return available;
-  },
+        const kit = await getKit();
+        if (!kit) return [];
+        return kit.refreshSupportedWallets();
+      },
 
-  connect: async (walletId?: WalletId) => {
-    set({ loading: true, error: "" });
-    try {
-      // Default to freighter for backward compatibility
-      const id = walletId ?? "freighter";
-      const provider = getProvider(id);
-      if (!provider) throw new Error(`Unknown wallet: ${id}`);
+      connect: async (walletId?: string) => {
+        set({ loading: true, error: "" });
+        try {
+          const kit = await getKit();
+          if (!kit) throw new Error("Wallet kit not initialized");
 
-      // Check availability (skip for Albedo — always available)
-      if (id !== "albedo") {
-        const available = await provider.isAvailable();
-        if (!available) {
-          throw new Error(
-            `${provider.meta.name} wallet not found. Install it from ${provider.meta.installUrl}`
-          );
+          if (walletId) {
+            kit.setWallet(walletId);
+          }
+
+          const { address } = await kit.fetchAddress();
+
+          let balance = "0";
+          try {
+            balance = await fetchXLMBalance(address);
+          } catch {
+            balance = "0";
+          }
+
+          set({
+            connected: true,
+            address,
+            balance,
+            loading: false,
+            error: "",
+            activeWallet: walletId || kit.selectedModule?.productId || null,
+          });
+
+          console.log(`[WALLET] Connected: ${address.slice(0, 8)}...`);
+
+          try {
+            await fetch("/api/internal/track-wallet", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ walletAddress: address }),
+            });
+          } catch (trackErr) {
+            console.warn("[WALLET] Failed to track wallet connection:", trackErr);
+          }
+        } catch (err) {
+          const msg = getWalletErrorMessage(err);
+          set({ loading: false, error: msg });
+          console.error("[WALLET] Connection error:", err);
         }
-      }
+      },
 
-      // Connect and get public key
-      const address = await provider.connect();
+      openAuthModal: async () => {
+        set({ loading: true, error: "" });
+        try {
+          const kit = await getKit();
+          if (!kit) throw new Error("Wallet kit not initialized");
 
-      // Fetch balance
-      let balance = "0";
-      try {
-        balance = await fetchXLMBalance(address);
-      } catch {
-        // Account may not exist yet on testnet
-        balance = "0";
-      }
+          const { address } = await kit.authModal();
 
-      set({
-        connected: true,
-        address,
-        balance,
-        loading: false,
-        error: "",
-        activeWallet: id,
-        _provider: provider,
-      });
+          let balance = "0";
+          try {
+            balance = await fetchXLMBalance(address);
+          } catch {
+            balance = "0";
+          }
 
-      console.log(
-        `[WALLET] Connected via ${provider.meta.name}: ${address.slice(0, 8)}...`
-      );
+          set({
+            connected: true,
+            address,
+            balance,
+            loading: false,
+            error: "",
+            activeWallet: kit.selectedModule?.productId || null,
+          });
 
-      // Track wallet connection event
-      try {
-        await fetch("/api/internal/track-wallet", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ walletAddress: address }),
+          console.log(`[WALLET] Connected via modal: ${address.slice(0, 8)}...`);
+
+          try {
+            await fetch("/api/internal/track-wallet", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ walletAddress: address }),
+            });
+          } catch (trackErr) {
+            console.warn("[WALLET] Failed to track wallet connection:", trackErr);
+          }
+        } catch (err) {
+          const msg = getWalletErrorMessage(err);
+          set({ loading: false, error: msg });
+          console.error("[WALLET] Modal auth error:", err);
+        }
+      },
+
+      disconnect: async () => {
+        const kit = await getKit();
+        if (kit) {
+          kit.disconnect().catch((err: any) => console.error("[WALLET] Disconnect error:", err));
+        }
+        set({
+          connected: false,
+          address: "",
+          balance: "0",
+          loading: false,
+          error: "",
+          activeWallet: null,
         });
-      } catch (trackErr) {
-        console.warn("[WALLET] Failed to track wallet connection:", trackErr);
-        // Don't fail wallet connection if tracking fails
-      }
-    } catch (err) {
-      const msg = getWalletErrorMessage(err);
-      set({ loading: false, error: msg });
-      console.error("[WALLET] Connection error:", err);
-    }
-  },
+        console.log("[WALLET] Disconnected");
+      },
 
-  disconnect: () => {
-    const provider = get()._provider;
-    if (provider?.disconnect) {
-      void provider.disconnect().catch((err) => {
-        console.error("[WALLET] Disconnect error:", err);
-      });
-    }
-    set({
-      connected: false,
-      address: "",
-      balance: "0",
-      loading: false,
-      error: "",
-      activeWallet: null,
-      _provider: null,
-    });
-    console.log("[WALLET] Disconnected");
-  },
+      refreshBalance: async () => {
+        const { address, connected } = get();
+        if (!connected || !address) return;
 
-  refreshBalance: async () => {
-    const { address, connected } = get();
-    if (!connected || !address) return;
+        try {
+          const balance = await fetchXLMBalance(address);
+          set({ balance });
+        } catch {
+          // silently fail
+        }
+      },
 
-    try {
-      const balance = await fetchXLMBalance(address);
-      set({ balance });
-    } catch {
-      // silently fail — account may not be funded
-    }
-  },
+      signTx: async (xdr: string) => {
+        const kit = await getKit();
+        if (!kit) throw new Error("No wallet connected");
+        
+        const { address } = get();
+        if (!address) throw new Error("Not connected");
 
-  signTx: async (xdr: string) => {
-    const { _provider } = get();
-    if (!_provider) throw new Error("No wallet connected");
-    return _provider.signTransaction(xdr, NETWORK_PASSPHRASE);
-  },
+        const { signedTxXdr } = await kit.signTransaction(xdr, {
+          networkPassphrase: NETWORK_PASSPHRASE,
+          address,
+        });
+        return signedTxXdr;
+      },
     }),
     {
       name: "wallet-storage",
       partialize: (state) => ({
-        // Only persist these fields (not _provider which is not serializable)
         connected: state.connected,
         address: state.address,
         activeWallet: state.activeWallet,
       }),
       onRehydrateStorage: () => (state) => {
-        // After rehydrating from localStorage, try to reconnect
         if (state && state.connected && state.address && state.activeWallet) {
-          console.log(
-            `[WALLET] Rehydrating from storage: ${state.address.slice(0, 8)}...`
-          );
-          // Auto-reconnect silently
-          state.connect?.(state.activeWallet).catch((err) => {
-            console.warn("[WALLET] Auto-reconnect failed:", err);
-            // Even if reconnect fails, wallet state is restored from cache
-            // so activity log can still load with the address
-          });
+          console.log(`[WALLET] Rehydrating from storage: ${state.address.slice(0, 8)}...`);
+          // Note: using timeout to wait for kit initialization on mount if needed
+          setTimeout(() => {
+            state.connect?.(state.activeWallet || undefined).catch((err: any) => {
+              console.warn("[WALLET] Auto-reconnect failed:", err);
+            });
+          }, 500);
         }
       },
     }

@@ -16,7 +16,10 @@ export default function PlatformAnalyticsPage() {
   const fetchMetrics = useCallback(async () => {
     try {
       const res = await fetch(`/api/internal/analytics-metrics?period=${period}`);
-      if (!res.ok) throw new Error("fetch failed");
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`fetch failed: ${res.status} ${text}`);
+      }
       const json = await res.json();
       setData(json as PlatformMetricsResponse);
     } catch (err) {

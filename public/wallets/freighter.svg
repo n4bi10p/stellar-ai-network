@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none">
+  <rect width="128" height="128" rx="24" fill="#1B2230"/>
+  <!-- Rocket body -->
+  <path d="M64 18C64 18 46 38 46 66c0 10.5 4.5 20 12 26v14l6-6 6 6V92c7.5-6 12-15.5 12-26 0-28-18-48-18-48z" fill="url(#rg1)"/>
+  <!-- Rocket window -->
+  <circle cx="64" cy="60" r="8" fill="#B8C8E8" opacity="0.9"/>
+  <circle cx="64" cy="60" r="5" fill="#6AA0F8"/>
+  <!-- Fins left -->
+  <path d="M46 66c0 0-10 4-12 16l14-8" fill="#3A6FCA"/>
+  <!-- Fins right -->
+  <path d="M82 66c0 0 10 4 12 16l-14-8" fill="#3A6FCA"/>
+  <!-- Flame -->
+  <ellipse cx="64" cy="96" rx="6" ry="9" fill="url(#rg2)" opacity="0.9"/>
+  <ellipse cx="64" cy="99" rx="3" ry="5" fill="#FFEA88" opacity="0.8"/>
+  <defs>
+    <linearGradient id="rg1" x1="64" y1="18" x2="64" y2="92" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#5294E2"/>
+      <stop offset="100%" stop-color="#2A5CB8"/>
+    </linearGradient>
+    <linearGradient id="rg2" x1="64" y1="87" x2="64" y2="105" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FF8A00"/>
+      <stop offset="100%" stop-color="#FF4D00"/>
+    </linearGradient>
+  </defs>
+</svg>
