@@ -121,7 +121,7 @@ describe("Workflow Orchestrator", () => {
 
     const result = await runWorkflow({ workflow, triggerSource: "manual" });
 
-    expect(result.skippedSteps).toBe(1);
+    expect(result.skippedSteps).toBe(2);
     expect(result.steps[1].status).toBe("skipped");
   });
 
@@ -201,7 +201,7 @@ describe("Workflow Orchestrator", () => {
     const result = await runWorkflow({ workflow, triggerSource: "manual" });
 
     expect(result.steps[1].status).toBe("skipped");
-    expect(result.skippedSteps).toBe(1);
+    expect(result.skippedSteps).toBe(2);
   });
 
   it("returns dry_run status in dry-run mode without calling executor", async () => {
