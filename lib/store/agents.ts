@@ -27,62 +27,64 @@ export async function addAgent(
   const store = await getAgentsStoreAdapter();
   await store.writeAll(agents);
 
-  // Also insert into Prisma database for analytics
-  try {
-    const prisma = getPrismaClient();
-    const strategyConfigJson = agent.strategyConfig ? JSON.stringify(agent.strategyConfig) : null;
-    const strategyStateJson = agent.strategyState ? JSON.stringify(agent.strategyState) : null;
-    const remindersJson = agent.reminders ? JSON.stringify(agent.reminders) : null;
-    const fullAutoJson = agent.fullAuto ? JSON.stringify(agent.fullAuto) : null;
-    const governanceJson = agent.governance ? JSON.stringify(agent.governance) : null;
-
-    // First, ensure User exists (create or get by wallet address)
-    let userId: string | null = null;
+  // Also insert into Prisma database for analytics if not already using Prisma as the primary store
+  if (store.kind !== "prisma") {
     try {
-      const userResult = await prisma.$queryRaw<Array<{ id: string }>>`
-        SELECT "id" FROM "User" WHERE "walletAddress" = ${agent.owner} LIMIT 1
-      `;
-      if (userResult && userResult.length > 0) {
-        userId = userResult[0].id;
-      } else {
-        // Create new user
-        const newUserResult = await prisma.$queryRaw<Array<{ id: string }>>`
-          INSERT INTO "User" ("id", "walletAddress", "createdAt") 
-          VALUES (gen_random_uuid(), ${agent.owner}, now())
-          RETURNING "id"
-        `;
-        if (newUserResult && newUserResult.length > 0) {
-          userId = newUserResult[0].id;
-        }
-      }
-    } catch (userErr) {
-      console.warn("[Agents] Error managing User record:", userErr instanceof Error ? userErr.message : String(userErr));
-      // Continue without userId, agent can still be created
-    }
+      const prisma = getPrismaClient();
+      const strategyConfigJson = agent.strategyConfig ? JSON.stringify(agent.strategyConfig) : null;
+      const strategyStateJson = agent.strategyState ? JSON.stringify(agent.strategyState) : null;
+      const remindersJson = agent.reminders ? JSON.stringify(agent.reminders) : null;
+      const fullAutoJson = agent.fullAuto ? JSON.stringify(agent.fullAuto) : null;
+      const governanceJson = agent.governance ? JSON.stringify(agent.governance) : null;
 
-    // Insert agent into Prisma with userId if available
-    await prisma.$executeRaw`
-      INSERT INTO "Agent" (
-        "id", "userId", "contractId", "owner", "name", "strategy", "templateId", 
-        "createdAt", "txHash", "strategyConfig", "strategyState", "autoExecuteEnabled", 
-        "executionMode", "reminders", "lastExecutionAt", "nextExecutionAt", 
-        "executionCount", "fullAuto", "governance"
-      ) VALUES (
-        ${newAgent.id}, ${userId || null}::uuid, ${agent.contractId}, ${agent.owner}, ${agent.name}, 
-        ${agent.strategy}, ${agent.templateId || null}, now(), ${agent.txHash || null}, 
-        ${strategyConfigJson}::jsonb, ${strategyStateJson}::jsonb, 
-        ${agent.autoExecuteEnabled || false}, ${agent.executionMode || null}, 
-        ${remindersJson}::jsonb, ${agent.lastExecutionAt || null}, 
-        ${agent.nextExecutionAt || null}, ${agent.executionCount || null}, 
-        ${fullAutoJson}::jsonb, ${governanceJson}::jsonb
-      )
-    `;
-  } catch (err) {
-    console.warn("[Agents] Error inserting agent into Prisma:", {
-      agentId: newAgent.id,
-      error: err instanceof Error ? err.message : String(err),
-    });
-    // Don't throw - agent creation should succeed even if DB insert fails
+      // First, ensure User exists (create or get by wallet address)
+      let userId: string | null = null;
+      try {
+        const userResult = await prisma.$queryRaw<Array<{ id: string }>>`
+          SELECT "id" FROM "User" WHERE "walletAddress" = ${agent.owner} LIMIT 1
+        `;
+        if (userResult && userResult.length > 0) {
+          userId = userResult[0].id;
+        } else {
+          // Create new user
+          const newUserResult = await prisma.$queryRaw<Array<{ id: string }>>`
+            INSERT INTO "User" ("id", "walletAddress", "createdAt") 
+            VALUES (gen_random_uuid(), ${agent.owner}, now())
+            RETURNING "id"
+          `;
+          if (newUserResult && newUserResult.length > 0) {
+            userId = newUserResult[0].id;
+          }
+        }
+      } catch (userErr) {
+        console.warn("[Agents] Error managing User record:", userErr instanceof Error ? userErr.message : String(userErr));
+        // Continue without userId, agent can still be created
+      }
+
+      // Insert agent into Prisma with userId if available
+      await prisma.$executeRaw`
+        INSERT INTO "Agent" (
+          "id", "userId", "contractId", "owner", "name", "strategy", "templateId", 
+          "createdAt", "txHash", "strategyConfig", "strategyState", "autoExecuteEnabled", 
+          "executionMode", "reminders", "lastExecutionAt", "nextExecutionAt", 
+          "executionCount", "fullAuto", "governance"
+        ) VALUES (
+          ${newAgent.id}, ${userId || null}::uuid, ${agent.contractId}, ${agent.owner}, ${agent.name}, 
+          ${agent.strategy}, ${agent.templateId || null}, now(), ${agent.txHash || null}, 
+          ${strategyConfigJson}::jsonb, ${strategyStateJson}::jsonb, 
+          ${agent.autoExecuteEnabled || false}, ${agent.executionMode || null}, 
+          ${remindersJson}::jsonb, ${agent.lastExecutionAt || null}, 
+          ${agent.nextExecutionAt || null}, ${agent.executionCount || null}, 
+          ${fullAutoJson}::jsonb, ${governanceJson}::jsonb
+        )
+      `;
+    } catch (err) {
+      console.warn("[Agents] Error inserting agent into Prisma:", {
+        agentId: newAgent.id,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      // Don't throw - agent creation should succeed even if DB insert fails
+    }
   }
 
   return newAgent;

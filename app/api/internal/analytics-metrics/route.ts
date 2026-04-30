@@ -21,6 +21,11 @@ export async function GET(request: NextRequest) {
       dau: 19,
       wau: 33,
       retention7d: 57.1,
+      swapMetrics: {
+        totalSwaps: 12,
+        successfulSwaps: 11,
+        swapSuccessRate: 91.6,
+      },
     },
     breakdowns: {
       executionStatus: [
@@ -91,6 +96,11 @@ export async function GET(request: NextRequest) {
           dau: 0,
           wau: 0,
           retention7d: 0,
+          swapMetrics: {
+            totalSwaps: 0,
+            successfulSwaps: 0,
+            swapSuccessRate: 0,
+          },
         },
         breakdowns: {
           executionStatus: [],

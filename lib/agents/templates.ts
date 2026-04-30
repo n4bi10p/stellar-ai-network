@@ -103,6 +103,22 @@ export const AGENT_TEMPLATES: AgentTemplate[] = [
     },
     icon: "🧩",
   },
+  {
+    id: "swap",
+    name: "Swap & Liquidity Aggregator",
+    description:
+      "Natively swaps tokens using Stellar's built-in liquidity aggregator. Can execute manually, on a schedule, or based on price conditions.",
+    strategy: "swap",
+    defaults: {
+      tokenIn: "native",
+      tokenOut: "",
+      amountIn: 10,
+      slippageBps: 50,
+      triggerType: "manual",
+      intervalSeconds: 86400,
+    },
+    icon: "🔄",
+  },
 ];
 
 export function getTemplate(id: string): AgentTemplate | undefined {

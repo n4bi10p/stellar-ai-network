@@ -7,6 +7,7 @@ export const supportedAgentStrategySchema = z.enum([
   "dca_bot",
   "savings_sweep",
   "workflow_chain",
+  "swap",
 ]);
 
 // Stellar address: starts with G, 56 chars
@@ -170,6 +171,21 @@ export const workflowChainConfigSchema = z
   .union([workflowChainLegacyConfigSchema, workflowChainCanonicalConfigSchema])
   .transform((value) => toWorkflowChainCanonicalConfig(value));
 
+export const swapConfigSchema = z.object({
+  tokenIn: z.string().min(1),
+  tokenOut: z.string().min(1),
+  amountIn: positiveNumberSchema,
+  slippageBps: nonNegativeNumberSchema.optional(),
+  triggerType: z.enum(["manual", "scheduled", "price_condition"]),
+  intervalSeconds: positiveNumberSchema.optional(),
+  priceCondition: z
+    .object({
+      operator: z.enum([">", "<"]),
+      targetPrice: positiveNumberSchema,
+    })
+    .optional(),
+});
+
 export const strategyConfigSchemas = {
   auto_rebalance: autoRebalanceConfigSchema,
   recurring_payment: recurringPaymentConfigSchema,
@@ -177,6 +193,7 @@ export const strategyConfigSchemas = {
   dca_bot: dcaBotConfigSchema,
   savings_sweep: savingsSweepConfigSchema,
   workflow_chain: workflowChainConfigSchema,
+  swap: swapConfigSchema,
 } as const;
 
 export const agentIntentSchema = z

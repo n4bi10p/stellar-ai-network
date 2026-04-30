@@ -65,6 +65,7 @@ Supported agent types:
 4. "dca_bot" - Dollar-cost averaging: send fixed amounts regularly
 5. "savings_sweep" - Automatically move funds to savings
 6. "workflow_chain" - Condition -> action -> notification automation chain
+7. "swap" - Swap tokens natively on Stellar (manually, scheduled, or on price)
 
 Rules:
 - Use "greet" for greetings or small talk.
@@ -74,6 +75,7 @@ Rules:
 - For "send_xlm": extract destination and amount, DO NOT include agentIntent.
 - For "create_agent": extract agentIntent with strategy, name, summary, missing fields, and config.
 - For time phrases: 1 hour=3600s, 1 day=86400s, 1 week=604800s, 1 month≈2592000s.
+- For "swap": extract tokenIn (default "native"), tokenOut (CODE:ISSUER or "native"), amountIn, slippageBps (default 50), triggerType (manual, scheduled, price_condition).
 - If fields are missing, list them in "missingFields" but still try to extract what you can.
 - Match to the best strategy from the supported list above.
 - Generate a helpful summary of what the agent will do.
@@ -96,8 +98,8 @@ For create_agent:
   "confidence": 0.0,
   "agentIntent": {
     "name": "Agent Name",
-    "strategy": "recurring_payment" | "auto_rebalance" | "price_alert" | "dca_bot" | "savings_sweep" | "workflow_chain",
-    "templateId": "auto_rebalance" | "bill_scheduler" | "price_alert" | "dca_bot" | "savings_sweep" | "workflow_chain",
+    "strategy": "recurring_payment" | "auto_rebalance" | "price_alert" | "dca_bot" | "savings_sweep" | "workflow_chain" | "swap",
+    "templateId": "auto_rebalance" | "bill_scheduler" | "price_alert" | "dca_bot" | "savings_sweep" | "workflow_chain" | "swap",
     "summary": "Clear explanation of what this agent does",
     "missingFields": ["field1", "field2"],
     "strategyConfig": {
@@ -116,6 +118,7 @@ Examples:
 "Send 100 XLM to GABC..." → {"action":"send_xlm","confidence":0.95,"destination":"GABC...","amount":"100"}
 "Alert me when XLM drops below 10 cents" → {"action":"create_agent","confidence":0.88,"agentIntent":{"name":"XLM Price Alert","strategy":"price_alert","templateId":"price_alert","summary":"Monitors XLM/USD price and alerts when it drops below $0.10","missingFields":["alertAction"],"strategyConfig":{"lowerBound":0.10}}}
 "If my balance drops below 20 XLM, send 5 XLM to GABC... and notify me" → {"action":"create_agent","confidence":0.9,"agentIntent":{"name":"Low Balance Workflow","strategy":"workflow_chain","templateId":"workflow_chain","summary":"Checks wallet balance and sends 5 XLM to the destination when balance drops below 20, with in-app notification context.","missingFields":[],"strategyConfig":{"triggerType":"balance_below","thresholdXlm":20,"checkIntervalSeconds":300,"actionType":"send_xlm","recipient":"GABC...","amountXlm":5,"notifyInApp":true,"notifyMessage":"Balance below 20 XLM"}}}
+"Swap 100 XLM for USDC when price is above 0.15" → {"action":"create_agent","confidence":0.92,"agentIntent":{"name":"XLM-USDC Swap","strategy":"swap","templateId":"swap","summary":"Swaps 100 XLM for USDC when exchange rate is above 0.15","missingFields":["tokenOutIssuer"],"strategyConfig":{"tokenIn":"native","tokenOut":"USDC","amountIn":100,"triggerType":"price_condition","priceCondition":{"operator":">","targetPrice":0.15}}}}
 "How much XLM do I have?" → {"action":"check_balance","confidence":0.98}
 "Hello!" → {"action":"greet","confidence":0.99}
 

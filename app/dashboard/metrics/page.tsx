@@ -179,6 +179,39 @@ export default function PlatformAnalyticsPage() {
                 </div>
               </div>
 
+              {/* Swap & Liquidity Metrics */}
+              <div className="mb-6">
+                <div className="mb-3 text-xs font-semibold tracking-widest text-muted">
+                  {">> SWAP_&_LIQUIDITY_METRICS"}
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <div className="border border-border/40 bg-surface/80 px-4 py-3">
+                    <div className="flex items-center gap-1.5 text-[10px] tracking-wider text-muted">
+                      <RefreshCw className="h-3 w-3" /> TOTAL_SWAPS
+                    </div>
+                    <div className="mt-1 text-2xl font-bold text-accent">
+                      {data.metrics.swapMetrics?.totalSwaps ?? 0}
+                    </div>
+                  </div>
+                  <div className="border border-border/40 bg-surface/80 px-4 py-3">
+                    <div className="flex items-center gap-1.5 text-[10px] tracking-wider text-muted">
+                      <TrendingUp className="h-3 w-3" /> SUCCESSFUL_SWAPS
+                    </div>
+                    <div className="mt-1 text-2xl font-bold text-accent">
+                      {data.metrics.swapMetrics?.successfulSwaps ?? 0}
+                    </div>
+                  </div>
+                  <div className="border border-border/40 bg-surface/80 px-4 py-3">
+                    <div className="flex items-center gap-1.5 text-[10px] tracking-wider text-muted">
+                      <BarChart3 className="h-3 w-3" /> SWAP_SUCCESS_RATE
+                    </div>
+                    <div className="mt-1 text-2xl font-bold text-accent">
+                      {data.metrics.swapMetrics?.swapSuccessRate?.toFixed(1) ?? "0.0"}%
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Execution Status Breakdown */}
               <div className="mb-6">
                 <div className="mb-3 text-xs font-semibold tracking-widest text-muted">

@@ -123,8 +123,8 @@ async function executeStep(
 
   // Optional delay
   if (step.delaySeconds && step.delaySeconds > 0) {
-    // In serverless we can't actually sleep long, but we log the intent
-    log.info(`Step ${step.stepId} has delay ${step.delaySeconds}s — skipping wait in serverless context`);
+    log.info(`Step ${step.stepId} has delay ${step.delaySeconds}s — waiting before execution`);
+    await new Promise((resolve) => setTimeout(resolve, step.delaySeconds! * 1000));
   }
 
   const agent = await getAgentById(step.agentId);

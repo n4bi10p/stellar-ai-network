@@ -170,20 +170,10 @@ export async function executeAgentOnce(options: {
   }
 
   // ── Governance gate ─────────────────────────────────────────────────────
-  // Use a preliminary amount estimate (strategy config or 0) for spend-limit
-  // pre-check. The exact amount is resolved after strategy evaluation.
-  const preliminaryAmount =
-    typeof agent.strategyConfig?.amount === "number"
-      ? (agent.strategyConfig.amount as number)
-      : typeof agent.strategyConfig?.amount === "string"
-      ? parseFloat(agent.strategyConfig.amount as string)
-      : 0;
-
+  // Use the actual amount resolved by the strategy for spend-limit enforcement.
   const govCheck = await evaluateGovernanceForExecution({
     agent,
-    amountXlm: Number.isFinite(preliminaryAmount) && preliminaryAmount > 0
-      ? preliminaryAmount
-      : 0,
+    amountXlm: decision.amountXlm > 0 ? decision.amountXlm : undefined,
     submitRequested: submit,
   });
 
@@ -205,7 +195,7 @@ export async function executeAgentOnce(options: {
 
   // Convert to stroops
   const amountStroops = Math.round(decision.amountXlm * 10_000_000);
-  if (!Number.isFinite(amountStroops) || amountStroops <= 0) {
+  if (!decision.xdrBuilder && (!Number.isFinite(amountStroops) || amountStroops <= 0)) {
     return {
       agentId,
       contractId: agent.contractId,
@@ -237,15 +227,39 @@ export async function executeAgentOnce(options: {
   }
   // ────────────────────────────────────────────────────────────────────────
 
-  // Build XDR using Soroban execute(recipient, amount) helper
-  // Optionally applies fee-bump sponsorship
-  const xdr = await buildExecute(
-    agent.contractId,
-    decision.recipient,
-    amountStroops,
-    sourceAddress,
-    sponsorshipConfig
-  );
+  // Build XDR
+  // If the strategy provides a custom transaction builder, use it.
+  // Otherwise, default to the Soroban execute() helper.
+  let xdr: string;
+  if (decision.xdrBuilder) {
+    xdr = await decision.xdrBuilder(sourceAddress);
+    
+    // Apply fee-bump sponsorship to custom XDR if configured
+    if (sponsorshipConfig?.enabled && sponsorshipConfig?.sponsorSecretKey) {
+      try {
+        const { buildSponsoredTransaction } = await import("@/lib/stellar/fee-sponsorship");
+        const StellarSdk = await import("@stellar/stellar-sdk");
+        const rpc = new StellarSdk.rpc.Server(process.env.NEXT_PUBLIC_SOROBAN_RPC_URL || "https://soroban-testnet.stellar.org");
+        const sponsoredResult = await buildSponsoredTransaction(
+          async () => xdr,
+          sponsorshipConfig,
+          sponsorshipConfig.sponsorSecretKey,
+          rpc
+        );
+        xdr = sponsoredResult.xdr;
+      } catch (error) {
+        console.warn(`Fee sponsorship failed for custom XDR, falling back to regular transaction: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+  } else {
+    xdr = await buildExecute(
+      agent.contractId,
+      decision.recipient,
+      amountStroops,
+      sourceAddress,
+      sponsorshipConfig
+    );
+  }
 
   const workflowSuccessStatePatch =
     workflowConfig && Number.isFinite(observedBalanceXlm)

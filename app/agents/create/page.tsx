@@ -871,6 +871,171 @@ function CreateAgentInner() {
                 </div>
               )}
 
+              {strategy === "swap" && (
+                <div>
+                  <label className="mb-2 block text-[10px] tracking-widest text-muted">
+                    SWAP_CONFIG
+                  </label>
+                  <div className="space-y-4 border border-border/40 bg-surface/80 px-4 py-3">
+                    {/* Common Assets Helper */}
+                    <div className="space-y-2">
+                      <span className="text-[9px] tracking-widest text-muted">COMMON_ASSETS</span>
+                      <div className="flex flex-wrap gap-2">
+                        {[
+                          { label: "USDC", asset: "USDC:GA5ZSEJYB37JRC5AVCIAZDL2Y3H6YEVL7DUR3S76ZHVG6PEYCHM7GJSB" },
+                          { label: "ARS", asset: "ARS:GC7Y3ZRHS376ZXC2D6S54EQX627346Y6GZGG66Y6GZGG66Y6GZGG66Y6" }, // Example ARS
+                          { label: "XLM", asset: "native" },
+                        ].map((a) => (
+                          <button
+                            key={a.label}
+                            type="button"
+                            onClick={() => {
+                              if (strategyConfig.tokenIn === a.asset) {
+                                setStrategyConfig(prev => ({ ...prev, tokenOut: a.asset }));
+                              } else {
+                                setStrategyConfig(prev => ({ ...prev, tokenOut: a.asset }));
+                              }
+                            }}
+                            className="rounded border border-border/40 bg-surface/90 px-2 py-1 text-[9px] hover:border-accent/50 hover:bg-surface-2"
+                          >
+                            {a.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div>
+                        <span className="mb-1 block text-[9px] tracking-widest text-muted">TOKEN_IN (e.g. &quot;native&quot;)</span>
+                        <input
+                          type="text"
+                          value={(strategyConfig.tokenIn as string) ?? "native"}
+                          onChange={(e) =>
+                            setStrategyConfig((prev) => ({ ...prev, tokenIn: e.target.value }))
+                          }
+                          disabled={isWorking || txStatus === "success"}
+                          className="w-full border border-border/40 bg-surface/90 px-3 py-2 text-sm outline-none focus:border-accent/50 disabled:opacity-50"
+                        />
+                      </div>
+                      <div>
+                        <span className="mb-1 block text-[9px] tracking-widest text-muted">TOKEN_OUT (CODE:ISSUER)</span>
+                        <input
+                          type="text"
+                          value={(strategyConfig.tokenOut as string) ?? ""}
+                          onChange={(e) =>
+                            setStrategyConfig((prev) => ({ ...prev, tokenOut: e.target.value }))
+                          }
+                          placeholder="USDC:G..."
+                          disabled={isWorking || txStatus === "success"}
+                          className="w-full border border-border/40 bg-surface/90 px-3 py-2 text-sm outline-none focus:border-accent/50 disabled:opacity-50"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                      <div>
+                        <span className="mb-1 block text-[9px] tracking-widest text-muted">AMOUNT_IN</span>
+                        <input
+                          type="number"
+                          value={(strategyConfig.amountIn as number | undefined) ?? 10}
+                          onChange={(e) =>
+                            setStrategyConfig((prev) => ({ ...prev, amountIn: Number(e.target.value || 0) }))
+                          }
+                          disabled={isWorking || txStatus === "success"}
+                          className="w-full border border-border/40 bg-surface/90 px-3 py-2 text-sm outline-none focus:border-accent/50 disabled:opacity-50"
+                        />
+                      </div>
+                      <div>
+                        <span className="mb-1 block text-[9px] tracking-widest text-muted">SLIPPAGE_BPS</span>
+                        <input
+                          type="number"
+                          value={(strategyConfig.slippageBps as number | undefined) ?? 50}
+                          onChange={(e) =>
+                            setStrategyConfig((prev) => ({ ...prev, slippageBps: Number(e.target.value || 0) }))
+                          }
+                          disabled={isWorking || txStatus === "success"}
+                          className="w-full border border-border/40 bg-surface/90 px-3 py-2 text-sm outline-none focus:border-accent/50 disabled:opacity-50"
+                        />
+                      </div>
+                      <div>
+                        <span className="mb-1 block text-[9px] tracking-widest text-muted">TRIGGER_TYPE</span>
+                        <select
+                          value={(strategyConfig.triggerType as string | undefined) ?? "manual"}
+                          onChange={(e) =>
+                            setStrategyConfig((prev) => ({ ...prev, triggerType: e.target.value }))
+                          }
+                          disabled={isWorking || txStatus === "success"}
+                          className="w-full border border-border/40 bg-surface/90 px-3 py-2 text-sm outline-none focus:border-accent/50 disabled:opacity-50"
+                        >
+                          <option value="manual">manual</option>
+                          <option value="scheduled">scheduled</option>
+                          <option value="price_condition">price_condition</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Swap Preview */}
+                    <SwapPreview 
+                      tokenIn={strategyConfig.tokenIn as string}
+                      tokenOut={strategyConfig.tokenOut as string}
+                      amountIn={String(strategyConfig.amountIn)}
+                    />
+
+                    {strategyConfig.triggerType === "scheduled" && (
+                      <div>
+                        <span className="mb-1 block text-[9px] tracking-widest text-muted">INTERVAL_SECONDS</span>
+                        <input
+                          type="number"
+                          value={(strategyConfig.intervalSeconds as number | undefined) ?? 86400}
+                          onChange={(e) =>
+                            setStrategyConfig((prev) => ({ ...prev, intervalSeconds: Number(e.target.value || 0) }))
+                          }
+                          disabled={isWorking || txStatus === "success"}
+                          className="w-full border border-border/40 bg-surface/90 px-3 py-2 text-sm outline-none focus:border-accent/50 disabled:opacity-50"
+                        />
+                      </div>
+                    )}
+
+                    {strategyConfig.triggerType === "price_condition" && (
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div>
+                          <span className="mb-1 block text-[9px] tracking-widest text-muted">OPERATOR</span>
+                          <select
+                            value={((strategyConfig.priceCondition as any)?.operator as string | undefined) ?? ">"}
+                            onChange={(e) =>
+                              setStrategyConfig((prev) => ({
+                                ...prev,
+                                priceCondition: { ...(prev.priceCondition as any), operator: e.target.value },
+                              }))
+                            }
+                            disabled={isWorking || txStatus === "success"}
+                            className="w-full border border-border/40 bg-surface/90 px-3 py-2 text-sm outline-none focus:border-accent/50 disabled:opacity-50"
+                          >
+                            <option value=">">&gt; (Greater than)</option>
+                            <option value="<">&lt; (Less than)</option>
+                          </select>
+                        </div>
+                        <div>
+                          <span className="mb-1 block text-[9px] tracking-widest text-muted">TARGET_PRICE</span>
+                          <input
+                            type="number"
+                            value={((strategyConfig.priceCondition as any)?.targetPrice as number | undefined) ?? 0}
+                            onChange={(e) =>
+                              setStrategyConfig((prev) => ({
+                                ...prev,
+                                priceCondition: { ...(prev.priceCondition as any), targetPrice: Number(e.target.value || 0) },
+                              }))
+                            }
+                            disabled={isWorking || txStatus === "success"}
+                            className="w-full border border-border/40 bg-surface/90 px-3 py-2 text-sm outline-none focus:border-accent/50 disabled:opacity-50"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Deploy Button */}
               {txStatus !== "success" && (
                 <button
@@ -998,5 +1163,119 @@ function CreateAgentInner() {
         </div>
       </aside>
     </HudShell>
+  );
+}
+
+function SwapPreview({
+  tokenIn,
+  tokenOut,
+  amountIn,
+}: {
+  tokenIn: string;
+  tokenOut: string;
+  amountIn: string;
+}) {
+  const [preview, setPreview] = useState<{
+    destAmount: string;
+    path: string[];
+    loading: boolean;
+    error: string | null;
+  }>({ destAmount: "", path: [], loading: false, error: null });
+
+  useEffect(() => {
+    if (!tokenIn || !tokenOut || !amountIn || parseFloat(amountIn) <= 0) {
+      setPreview({ destAmount: "", path: [], loading: false, error: null });
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setPreview((prev) => ({ ...prev, loading: true, error: null }));
+      try {
+        const { getServer, parseAsset } = await import("@/lib/stellar/path-payment");
+        const server = getServer();
+        const sourceAsset = parseAsset(tokenIn);
+        const destAsset = parseAsset(tokenOut);
+
+        const pathReq = await server
+          .strictSendPaths(sourceAsset, amountIn, [destAsset])
+          .call();
+
+        if (pathReq.records.length === 0) {
+          setPreview({
+            destAmount: "",
+            path: [],
+            loading: false,
+            error: "No liquidity path found",
+          });
+          return;
+        }
+
+        const bestPath = pathReq.records.sort(
+          (a, b) => parseFloat(b.destination_amount) - parseFloat(a.destination_amount)
+        )[0];
+
+        setPreview({
+          destAmount: bestPath.destination_amount,
+          path: bestPath.path.map((p: any) => p.asset_code || "XLM"),
+          loading: false,
+          error: null,
+        });
+      } catch (err) {
+        setPreview({
+          destAmount: "",
+          path: [],
+          loading: false,
+          error: "Failed to fetch preview",
+        });
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [tokenIn, tokenOut, amountIn]);
+
+  if (!tokenIn || !tokenOut || !amountIn || parseFloat(amountIn) <= 0) return null;
+
+  return (
+    <div className="border-t border-border/20 pt-3">
+      <div className="flex items-center justify-between text-[10px] tracking-widest text-muted">
+        <span>SWAP_PREVIEW</span>
+        {preview.loading && <Loader2 className="h-3 w-3 animate-spin text-accent" />}
+      </div>
+      
+      {preview.error ? (
+        <div className="mt-1 text-[9px] text-red-400">{preview.error}</div>
+      ) : preview.destAmount ? (
+        <div className="mt-2 space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-[9px] text-muted">ESTIMATED_RECEIVE</span>
+            <span className="text-xs font-bold text-accent">
+              {parseFloat(preview.destAmount).toFixed(6)} {tokenOut.split(":")[0]}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-[9px] text-muted">EXCHANGE_RATE</span>
+            <span className="text-[10px] text-foreground">
+              1 {tokenIn.split(":")[0]} = {(parseFloat(preview.destAmount) / parseFloat(amountIn)).toFixed(6)} {tokenOut.split(":")[0]}
+            </span>
+          </div>
+          {preview.path.length > 0 && (
+            <div className="flex items-center gap-1.5 pt-1 overflow-x-auto no-scrollbar">
+              <span className="text-[8px] tracking-widest text-muted shrink-0">PATH:</span>
+              <div className="flex items-center gap-1">
+                <span className="text-[9px] text-foreground/70">{tokenIn.split(":")[0]}</span>
+                {preview.path.map((p, i) => (
+                  <div key={i} className="flex items-center gap-1">
+                    <span className="text-[8px] text-muted">→</span>
+                    <span className="text-[9px] text-foreground/70">{p}</span>
+                  </div>
+                ))}
+                <span className="text-[8px] text-muted">→</span>
+                <span className="text-[9px] text-accent font-bold">{tokenOut.split(":")[0]}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : null}
+    </div>
   );
 }

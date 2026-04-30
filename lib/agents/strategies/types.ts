@@ -26,5 +26,7 @@ export type StrategyDecision =
       reason?: string;
       nextExecutionAt?: string | null;
       statePatch?: Record<string, unknown>;
+      /** Optional custom transaction builder (e.g. for native operations like Swap) */
+      xdrBuilder?: (sourceAddress: string) => Promise<string>;
     };
 

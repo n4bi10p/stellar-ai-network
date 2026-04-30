@@ -34,6 +34,11 @@ export interface PlatformMetricsResponse {
     dau: number;
     wau: number;
     retention7d: number;
+    swapMetrics: {
+      totalSwaps: number;
+      successfulSwaps: number;
+      swapSuccessRate: number;
+    };
   };
   breakdowns: {
     executionStatus: Array<{ status: string; count: number }>;
@@ -452,7 +457,7 @@ export async function computePlatformMetrics(
     }),
     prisma.userEvent.count(),
     prisma.executionEvent.findMany({
-      select: { metadata: true },
+      select: { status: true, metadata: true },
     }),
     prisma.userEvent.findMany({
       where: { createdAt: { gte: oneDayAgo } },
@@ -515,6 +520,23 @@ export async function computePlatformMetrics(
       : 0;
 
   const transactionTypeBreakdown = buildTransactionTypeBreakdown(allExecutionEvents);
+  
+  let totalSwaps = 0;
+  let successfulSwaps = 0;
+  for (const event of allExecutionEvents) {
+    const meta = event.metadata && typeof event.metadata === 'object' && !Array.isArray(event.metadata)
+      ? (event.metadata as { strategy?: string, transactionType?: string })
+      : null;
+      
+    if (meta?.strategy === "swap" || meta?.transactionType === "swap") {
+      totalSwaps++;
+      if (event.status === "success") {
+        successfulSwaps++;
+      }
+    }
+  }
+  const swapSuccessRate = totalSwaps > 0 ? parseFloat(((successfulSwaps / totalSwaps) * 100).toFixed(1)) : 0;
+
   const history = dailyHistoryRows.map(mapDailyStatsRow);
   const todayKey = toIsoDate(now);
 
@@ -553,6 +575,11 @@ export async function computePlatformMetrics(
       dau,
       wau,
       retention7d,
+      swapMetrics: {
+        totalSwaps,
+        successfulSwaps,
+        swapSuccessRate,
+      },
     },
     breakdowns: {
       executionStatus: executionBreakdown.map((item) => ({
