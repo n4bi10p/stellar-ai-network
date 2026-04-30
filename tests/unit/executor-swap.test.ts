@@ -14,6 +14,11 @@ vi.mock("@/lib/stellar/path-payment", async (importOriginal) => {
   };
 });
 
+// Mock the sponsorship store to avoid Prisma DB calls in CI environments
+vi.mock("@/lib/store/sponsorship", () => ({
+  getAgentSponsorshipConfig: vi.fn().mockResolvedValue(null),
+}));
+
 describe("Executor - Swap Integration", () => {
   it("should generate XDR using strategy xdrBuilder for swaps", async () => {
     // 1. Create a swap agent in the store
