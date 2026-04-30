@@ -262,9 +262,20 @@ The most advanced Level 6 feature — chain multiple agents together into autono
 
 **Example pipeline:** Savings Sweep `→(on_success)→` Auto-Rebalancer `→(always)→` DCA Bot
 
+### 💱 Swap & Liquidity Aggregator (Advanced Feature)
+
+Natively swap tokens on the Stellar network using built-in Path Payments for the best available exchange rates across all liquidity pools.
+
+- **AI Natural Language Setup:** Type "Swap 50 XLM for USDC when price is above 0.15" to instantly configure.
+- **Multiple Triggers:** Execute swaps `manual`ly, on a `scheduled` interval, or based on a `price_condition` (like limit orders).
+- **Live Path Routing Visualization:** Real-time UI component showing the exact liquidity path (e.g. `XLM → yXLM → USDC`) before signing.
+- **Best-Rate Guaranteed:** Automatically uses `PathPaymentStrictSend` to guarantee the specified output without losing value to slippage.
+- **Analytics Tracking:** Dedicated metrics dashboard tracking total swaps, successful swaps, and overall swap success rate.
+
 ### Additional Features Built
+- **Stellar Wallets Kit Integration:** High-fidelity SVG logos and robust multi-wallet support natively integrated into the brutalist HUD UI.
 - AI-powered natural language command parsing (Gemini 2.5 Flash)
-- AI-assisted natural language agent creation for recurring payments, alerts, DCA, sweeps, and rebalancing
+- AI-assisted natural language agent creation for recurring payments, alerts, DCA, sweeps, swaps, and rebalancing
 - Terminal/HUD-style UI (brutalist dark-mode design)
 - Dark/Light theme toggle
 - `help`, `status`, `clear` meta commands
@@ -723,7 +734,7 @@ The AI agent also understands natural language variations like _"transfer 50 lum
 
 ## Agent Templates
 
-Five pre-built agent templates are available for one-click deployment:
+Six pre-built agent templates are available for one-click deployment:
 
 | Template | Strategy | Description | Defaults |
 |----------|----------|-------------|----------|
@@ -732,6 +743,7 @@ Five pre-built agent templates are available for one-click deployment:
 | 📈 Price Alert | `price_alert` | Monitors XLM price and executes trades at thresholds | 200 XLM |
 | 🧮 DCA Bot | `dca_bot` | Executes fixed-amount periodic transfers | 5 XLM / interval |
 | 🏦 Savings Sweep | `savings_sweep` | Sweeps excess XLM above reserve to vault wallet | Threshold-based |
+| 🔄 Swap & Liquidity | `swap` | Native Stellar token swaps via Path Payments with best-rate routing | Token pair, manual trigger |
 
 Templates can be selected from the dashboard template browser or the create page strategy selector.
 
